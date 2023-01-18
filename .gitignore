@@ -1,0 +1,63 @@
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+*.user
+*.db
+*.opendb
+modules.order
+Module.symvers
+dkms.conf
+/Wrappers/inc/*wrap.*
+/Wrappers/inc/*.py
+/Wrappers/inc/*.java
+/.vs
+/obj
+/x64
+/build
+/ipch
+/packages
+/out/build/x64-Debug
