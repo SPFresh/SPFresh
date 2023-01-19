@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.0-devel-ubuntu20.04
+FROM mcr.microsoft.com/oss/nvidia/k8s-device-plugin:v0.10.0
 WORKDIR /app
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -14,5 +14,6 @@ COPY AnnService ./AnnService/
 COPY Test ./Test/
 COPY Wrappers ./Wrappers/
 COPY GPUSupport ./GPUSupport/
+COPY ThirdParty ./ThirdParty/
 
-RUN mkdir build && cd build && cmake .. && make -j && cd ..
+RUN mkdir build && cd build && cmake .. && -j$(nproc) && cd ..
