@@ -96,7 +96,6 @@ namespace SPTAG {
             float m_rngFactor;
             int m_samples;
             bool m_excludehead;
-            std::string m_fullDeletedIDFile;
             bool m_useKV;
             std::string m_KVPath;
             std::string m_ssdInfoFile;
