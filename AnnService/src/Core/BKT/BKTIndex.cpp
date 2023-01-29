@@ -568,7 +568,6 @@ namespace SPTAG
             if (p_data == nullptr || p_vectorNum == 0 || p_dimension == 0) return ErrorCode::EmptyData;
 
             SizeType begin, end;
-            ErrorCode ret;
             {
                 std::lock_guard<std::mutex> lock(m_dataAddLock);
 
@@ -591,13 +590,6 @@ namespace SPTAG
                     m_pGraph.SetR(begin);
                     m_deletedID.SetR(begin);
                     return ErrorCode::MemoryOverFlow;
-                }
-                if (DistCalcMethod::Cosine == m_iDistCalcMethod && !p_normalized)
-                {
-                    int base = COMMON::Utils::GetBase<T>();
-                    for (SizeType i = begin; i < end; i++) {
-                        COMMON::Utils::Normalize((T*)m_pSamples[i], GetFeatureDim(), base);
-                    }
                 }
             }
             beginHead = begin;

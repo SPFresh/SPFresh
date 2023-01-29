@@ -111,7 +111,7 @@ namespace SPTAG
                 }
             }
 
-            if (!m_extraSearcher->LoadIndex(m_options)) return ErrorCode::Fail;
+            if (!m_extraSearcher->LoadIndex(m_options, m_versionMap)) return ErrorCode::Fail;
 
             m_vectorTranslateMap.reset((std::uint64_t*)(p_indexBlobs.back().Data()), [=](std::uint64_t* ptr) {});
 
@@ -152,7 +152,7 @@ namespace SPTAG
                 }
             }
 
-            if (!m_extraSearcher->LoadIndex(m_options)) return ErrorCode::Fail;
+            if (!m_extraSearcher->LoadIndex(m_options, m_versionMap)) return ErrorCode::Fail;
 
             m_vectorTranslateMap.reset(new std::uint64_t[m_index->GetNumSamples()], std::default_delete<std::uint64_t[]>());
             IOBINARY(p_indexStreams[m_index->GetIndexFiles()->size()], ReadBinary, sizeof(std::uint64_t) * m_index->GetNumSamples(), reinterpret_cast<char*>(m_vectorTranslateMap.get()));
@@ -259,7 +259,7 @@ namespace SPTAG
                 }
 
                 p_queryResults->Reverse();
-                m_extraSearcher->SearchIndex(m_workspace.get(), *p_queryResults, m_index, nullptr, m_versionMap);
+                m_extraSearcher->SearchIndex(m_workspace.get(), *p_queryResults, m_index, nullptr);
                 p_queryResults->SortResult();
             }
 
@@ -324,7 +324,7 @@ namespace SPTAG
             }
 
             p_queryResults->Reverse();
-            m_extraSearcher->SearchIndex(m_workspace.get(), *p_queryResults, m_index, p_stats, m_versionMap);
+            m_extraSearcher->SearchIndex(m_workspace.get(), *p_queryResults, m_index, p_stats);
             p_queryResults->SortResult();
             return ErrorCode::Success;
         }
@@ -333,8 +333,6 @@ namespace SPTAG
         ErrorCode Index<T>::DebugSearchDiskIndex(QueryResult& p_query, int p_subInternalResultNum, int p_internalResultNum,
             SearchStats* p_stats, std::set<int>* truth, std::map<int, std::set<int>>* found) const
         {
-            auto exStart = std::chrono::high_resolution_clock::now();
-
             if (nullptr == m_extraSearcher) return ErrorCode::EmptyIndex;
 
             COMMON::QueryResultSet<T> newResults(*((COMMON::QueryResultSet<T>*)&p_query));
@@ -374,12 +372,7 @@ namespace SPTAG
                     m_workspace->m_postingIDs.emplace_back(res->VID);
                 }
 
-                auto exEnd = std::chrono::high_resolution_clock::now();
-
-                p_stats->m_totalLatency += ((double)std::chrono::duration_cast<std::chrono::milliseconds>(exEnd - exStart).count());
-
-
-                m_extraSearcher->SearchIndex(m_workspace.get(), newResults, m_index, p_stats, m_versionMap, truth, found);
+                m_extraSearcher->SearchIndex(m_workspace.get(), newResults, m_index, p_stats, truth, found);
             }
 
             newResults.SortResult();
@@ -787,7 +780,7 @@ namespace SPTAG
                         }
                     }
 
-                    if (!m_extraSearcher->BuildIndex(p_reader, m_index, m_options)) {
+                    if (!m_extraSearcher->BuildIndex(p_reader, m_index, m_options, m_versionMap)) {
                         LOG(Helper::LogLevel::LL_Error, "BuildSSDIndex Failed!\n");
                         if (m_options.m_buildSsdIndex) {
                             return ErrorCode::Fail;
@@ -797,7 +790,7 @@ namespace SPTAG
                         }
                     }
                 }
-                if (!m_extraSearcher->LoadIndex(m_options)) {
+                if (!m_extraSearcher->LoadIndex(m_options, m_versionMap)) {
                     LOG(Helper::LogLevel::LL_Error, "Cannot Load SSDIndex!\n");
                     return ErrorCode::Fail;
                 }
@@ -814,7 +807,7 @@ namespace SPTAG
                     }
                     else {
                         if (m_options.m_preReassign) {
-                            m_extraSearcher->RefineIndex(p_reader, m_index, m_options);
+                            m_extraSearcher->RefineIndex(p_reader, m_index);
                         }
                     }
                 }
@@ -955,7 +948,6 @@ namespace SPTAG
             if (p_dimension != GetFeatureDim()) return ErrorCode::DimensionSizeMismatch;
 
             SizeType begin, end;
-            ErrorCode ret;
             {
                 std::lock_guard<std::mutex> lock(m_dataAddLock);
 
@@ -964,7 +956,7 @@ namespace SPTAG
 
                 if (begin == 0) { return ErrorCode::EmptyIndex; }
 
-                if (m_versionMap.AddBatch(p_vectorSet->Count()) != ErrorCode::Success) {
+                if (m_versionMap.AddBatch(p_vectorNum) != ErrorCode::Success) {
                     LOG(Helper::LogLevel::LL_Info, "MemoryOverFlow: VID: %d, Map Size:%d\n", begin, m_versionMap.BufferSize());
                     exit(1);
                 }
@@ -1001,17 +993,14 @@ namespace SPTAG
                     GetEnumValueType<T>(), p_dimension, p_vectorNum));
             }
 
-            return m_extraSearcher->AddIndex(vectorSet, m_index, m_options, begin);
+            return m_extraSearcher->AddIndex(vectorSet, m_index, begin);
         }
 
         template <typename T>
         ErrorCode Index<T>::DeleteIndex(const SizeType &p_id)
         {
-            if (m_extraSearcher == nullptr) {
-                LOG(Helper::LogLevel::LL_Error, "Only Support Extra Update");
-                return ErrorCode::Fail;
-            }
-            return m_extraSearcher->DeleteIndex(p_id);
+            if (m_versionMap.Delete(p_id)) return ErrorCode::Success;
+            return ErrorCode::VectorNotFound;
         }
     }
 }

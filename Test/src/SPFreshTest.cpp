@@ -113,7 +113,13 @@ namespace SPTAG {
                 std::ifstream buffer("/proc/self/statm");
                 buffer >> tSize >> resident >> share;
                 buffer.close();
+#ifndef _MSC_VER
                 long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // in case x86-64 is configured to use 2MB pages
+#else
+                SYSTEM_INFO sysInfo;
+                GetSystemInfo(&sysInfo);
+                long page_size_kb = sysInfo.dwPageSize / 1024;
+#endif
                 long rss = resident * page_size_kb;
                 long vector_size = vectorSet->PerVectorDataSize() * (vectorSet->Count() / 1024);
                 long vector_size_mb = vector_size / 1024;
@@ -269,14 +275,13 @@ namespace SPTAG {
                         index = queriesSent.fetch_add(1);
                         if (index < numQueries)
                         {
-
                             double startTime = threadws.getElapsedMs();
                             p_index->GetMemoryIndex()->SearchIndex(p_results[index]);
                             double endTime = threadws.getElapsedMs();
 
                             p_stats[index].m_totalLatency = endTime - startTime;
 
-                            p_index->DebugSearchDiskIndex(p_results[index], p_internalResultNum, p_internalResultNum, &(p_stats[index]));
+                            p_index->SearchDiskIndex(p_results[index], &(p_stats[index]));
                             double exEndTime = threadws.getElapsedMs();
 
                             p_stats[index].m_exLatency = exEndTime - endTime;
@@ -593,7 +598,7 @@ namespace SPTAG {
                             {
                                 LOG(Helper::LogLevel::LL_Info, "Sent %.2lf%%...\n", index * 100.0 / step);
                             }
-                            p_index->AddIndex(vectorSet->GetVector(index + curCount), 1, p_opts.m_dim, nullptr);
+                            p_index->AddIndex(vectorSet->GetVector((SizeType)(index + curCount)), 1, p_opts.m_dim, nullptr);
                         }
                         else
                         {
@@ -695,7 +700,6 @@ namespace SPTAG {
                 
                 int finishedInsert = 0;
                 int insertThreads = p_opts.m_insertThreadNum;
-                int splitJobs, reassignJobs;
 
                 LOG(Helper::LogLevel::LL_Info, "Updating: numThread: %d, step: %d, totalBatch: %d.\n", insertThreads, step, batch);
 
@@ -716,9 +720,8 @@ namespace SPTAG {
                         insert_status = insert_future.wait_for(std::chrono::seconds(3));
                         if (insert_status == std::future_status::timeout) {
                             ShowMemoryStatus(vectorSet, sw.getElapsedSec());
-                            p_index->GetSplitReassignPoolStatus(&splitJobs, &reassignJobs);
-                            p_index->PrintUpdateStatus(-1);
-                            LOG(Helper::LogLevel::LL_Info, "remain splitJobs: %d, reassignJobs: %d\n", splitJobs, reassignJobs);
+                            p_index->GetIndexStat(-1, false, false);
+                            p_index->GetDBStat();
                             if(p_opts.m_searchDuringUpdate) StableSearch(p_index, numThreads, querySet, vectorSet, searchTimes, p_opts.m_queryCountLimit, internalResultNum, curCount, p_opts, sw.getElapsedSec());
                             p_index->GetDBStat();
                         }
@@ -728,9 +731,7 @@ namespace SPTAG {
                     finishedInsert += step;
                     LOG(Helper::LogLevel::LL_Info, "Total Vector num %d \n", curCount);
 
-                    p_index->PrintUpdateStatus(finishedInsert);
-                    p_index->PrintUpdateCostStatus();
-                    p_index->ResetUpdateStatus();
+                    p_index->GetIndexStat(finishedInsert, true, true);
 
                     ShowMemoryStatus(vectorSet, sw.getElapsedSec());
                     // p_opts.m_calTruth = calTruthOrigin;
@@ -743,7 +744,7 @@ namespace SPTAG {
                     //         p_index->Rebuild(vectorReader, curCount);
                     //     }
                     // }
-                    p_index->CalculatePostingDistribution();
+                    //TODO: p_index->CalculatePostingDistribution();
                     // p_index->ForceCompaction();
 
                     p_opts.m_calTruth = calTruthOrigin;
@@ -776,12 +777,6 @@ namespace SPTAG {
                 std::string outputFile = p_opts.m_searchResult;
                 std::string truthFile = p_opts.m_truthPath;
                 std::string warmupFile = p_opts.m_warmupPath;
-
-                if (COMMON::DistanceUtils::Quantizer)
-                {
-                    LOG(Helper::LogLevel::LL_Error, "Unsupport quantizer!\n");
-                    exit(1);
-                }
 
                 if (!p_opts.m_logFile.empty())
                 {
@@ -883,7 +878,6 @@ namespace SPTAG {
                 if (opts->m_generateTruth)
                 {
                     LOG(Helper::LogLevel::LL_Info, "Start generating truth. It's maybe a long time.\n");
-                    if (COMMON::DistanceUtils::Quantizer) valueType = VectorValueType::UInt8;
                     std::shared_ptr<Helper::ReaderOptions> vectorOptions(new Helper::ReaderOptions(valueType, opts->m_dim, opts->m_vectorType, opts->m_vectorDelimiter));
                     auto vectorReader = Helper::VectorSetReader::CreateInstance(vectorOptions);
                     if (ErrorCode::Success != vectorReader->LoadFile(opts->m_vectorPath))
@@ -907,7 +901,7 @@ namespace SPTAG {
             #define DefineVectorValueType(Name, Type) \
             if (opts->m_valueType == VectorValueType::Name) { \
             COMMON::TruthSet::GenerateTruth<Type>(querySet, vectorSet, opts->m_truthPath, \
-                distCalcMethod, opts->m_resultNum, opts->m_truthType); \
+                distCalcMethod, opts->m_resultNum, opts->m_truthType, index->m_pQuantizer); \
             } \
 
             #include "inc/Core/DefinitionList.h"
