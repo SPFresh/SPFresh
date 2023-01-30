@@ -25,7 +25,7 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
     if (CXX_COMPILER_VERSION VERSION_LESS 5.0)
         message(FATAL_ERROR "GCC version must be at least 5.0!")
     endif()
-    set (CMAKE_CXX_FLAGS "-Wall -Wunreachable-code -Wno-reorder -Wno-sign-compare -Wno-unknown-pragmas -Wcast-align -lm -lrt -fopenmp -std=c++17")
+    set (CMAKE_CXX_FLAGS "-Wall -Wunreachable-code -Wno-reorder -Wno-pessimizing-move -Wno-unused-result -Wno-strict-aliasing -Wno-sign-compare -Wno-unknown-pragmas -Wcast-align -lm -lrt -fopenmp -std=c++17")
     set (CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -march=native")
     set (CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG")
 
