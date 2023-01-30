@@ -113,7 +113,7 @@ namespace SPTAG
 
             if (!m_extraSearcher->LoadIndex(m_options, m_versionMap)) return ErrorCode::Fail;
 
-            m_vectorTranslateMap.reset((std::uint64_t*)(p_indexBlobs.back().Data()), [=](std::uint64_t* ptr) {});
+            if (m_options.m_excludehead) m_vectorTranslateMap.reset((std::uint64_t*)(p_indexBlobs.back().Data()), [=](std::uint64_t* ptr) {});
 
             omp_set_num_threads(m_options.m_iSSDNumberOfThreads);
             return ErrorCode::Success;
@@ -154,8 +154,10 @@ namespace SPTAG
 
             if (!m_extraSearcher->LoadIndex(m_options, m_versionMap)) return ErrorCode::Fail;
 
-            m_vectorTranslateMap.reset(new std::uint64_t[m_index->GetNumSamples()], std::default_delete<std::uint64_t[]>());
-            IOBINARY(p_indexStreams[m_index->GetIndexFiles()->size()], ReadBinary, sizeof(std::uint64_t) * m_index->GetNumSamples(), reinterpret_cast<char*>(m_vectorTranslateMap.get()));
+            if (m_options.m_excludehead) {
+                m_vectorTranslateMap.reset(new std::uint64_t[m_index->GetNumSamples()], std::default_delete<std::uint64_t[]>());
+                IOBINARY(p_indexStreams[m_index->GetIndexFiles()->size()], ReadBinary, sizeof(std::uint64_t) * m_index->GetNumSamples(), reinterpret_cast<char*>(m_vectorTranslateMap.get()));
+            }
 
             omp_set_num_threads(m_options.m_iSSDNumberOfThreads);
 
@@ -204,12 +206,12 @@ namespace SPTAG
         template<typename T>
         ErrorCode Index<T>::SaveIndexData(const std::vector<std::shared_ptr<Helper::DiskIO>>& p_indexStreams)
         {
-            if (m_index == nullptr || m_vectorTranslateMap == nullptr) return ErrorCode::EmptyIndex;
+            if (m_index == nullptr) return ErrorCode::EmptyIndex;
 
             ErrorCode ret;
             if ((ret = m_index->SaveIndexData(p_indexStreams)) != ErrorCode::Success) return ret;
 
-            IOBINARY(p_indexStreams[m_index->GetIndexFiles()->size()], WriteBinary, sizeof(std::uint64_t) * m_index->GetNumSamples(), (char*)(m_vectorTranslateMap.get()));
+            if (m_options.m_excludehead) IOBINARY(p_indexStreams[m_index->GetIndexFiles()->size()], WriteBinary, sizeof(std::uint64_t) * m_index->GetNumSamples(), (char*)(m_vectorTranslateMap.get()));
             m_versionMap.Save(m_options.m_deleteIDFile);
             return ErrorCode::Success;
         }
@@ -232,7 +234,7 @@ namespace SPTAG
             if (m_extraSearcher != nullptr) {
                 if (m_workspace.get() == nullptr) {
                     m_workspace.reset(new ExtraWorkSpace());
-                    m_workspace->Initialize(m_options.m_maxCheck, m_options.m_hashExp, m_options.m_searchInternalResultNum, max(m_options.m_postingPageLimit, m_options.m_searchPostingPageLimit + 1) << PageSizeEx, m_options.m_enableDataCompression);
+                    m_workspace->Initialize(m_options.m_maxCheck, m_options.m_hashExp, m_options.m_searchInternalResultNum, min(m_options.m_postingPageLimit, m_options.m_searchPostingPageLimit + 1) << PageSizeEx, m_options.m_enableDataCompression);
                 }
                 m_workspace->m_deduper.clear();
                 m_workspace->m_postingIDs.clear();
@@ -244,8 +246,8 @@ namespace SPTAG
                     if (res->VID == -1) break;
                     
                     auto postingID = res->VID;
-                    res->VID = static_cast<SizeType>((m_vectorTranslateMap.get())[res->VID]);
-                    if (res->VID == MaxSize) {
+                    if (m_vectorTranslateMap.get() != nullptr) res->VID = static_cast<SizeType>((m_vectorTranslateMap.get())[res->VID]);
+                    else {
                         res->VID = -1;
                         res->Dist = MaxDist;
                     }
@@ -258,7 +260,7 @@ namespace SPTAG
                     m_workspace->m_postingIDs.emplace_back(postingID);
                 }
 
-                p_queryResults->Reverse();
+                if (m_vectorTranslateMap.get() != nullptr) p_queryResults->Reverse();
                 m_extraSearcher->SearchIndex(m_workspace.get(), *p_queryResults, m_index, nullptr);
                 p_queryResults->SortResult();
             }
@@ -288,7 +290,7 @@ namespace SPTAG
 
             if (m_workspace.get() == nullptr) {
                 m_workspace.reset(new ExtraWorkSpace());
-                m_workspace->Initialize(m_options.m_maxCheck, m_options.m_hashExp, m_options.m_searchInternalResultNum, max(m_options.m_postingPageLimit, m_options.m_searchPostingPageLimit + 1) << PageSizeEx, m_options.m_enableDataCompression);
+                m_workspace->Initialize(m_options.m_maxCheck, m_options.m_hashExp, m_options.m_searchInternalResultNum, min(m_options.m_postingPageLimit, m_options.m_searchPostingPageLimit + 1) << PageSizeEx, m_options.m_enableDataCompression);
             }
             m_workspace->m_deduper.clear();
             m_workspace->m_postingIDs.clear();
@@ -303,9 +305,8 @@ namespace SPTAG
                 {
                     m_workspace->m_postingIDs.emplace_back(res->VID);
                 }
-                res->VID = static_cast<SizeType>((m_vectorTranslateMap.get())[res->VID]);
-                if (res->VID == MaxSize)
-                {
+                if (m_vectorTranslateMap.get() != nullptr) res->VID = static_cast<SizeType>((m_vectorTranslateMap.get())[res->VID]);
+                else {
                     res->VID = -1;
                     res->Dist = MaxDist;
                 }
@@ -315,15 +316,13 @@ namespace SPTAG
             {
                 auto res = p_queryResults->GetResult(i);
                 if (res->VID == -1) break;
-                res->VID = static_cast<SizeType>((m_vectorTranslateMap.get())[res->VID]);
-                if (res->VID == MaxSize)
-                {
+                if (m_vectorTranslateMap.get() != nullptr)  res->VID = static_cast<SizeType>((m_vectorTranslateMap.get())[res->VID]);
+                else {
                     res->VID = -1;
                     res->Dist = MaxDist;
                 }
             }
-
-            p_queryResults->Reverse();
+            if (m_vectorTranslateMap.get() != nullptr) p_queryResults->Reverse();
             m_extraSearcher->SearchIndex(m_workspace.get(), *p_queryResults, m_index, p_stats);
             p_queryResults->SortResult();
             return ErrorCode::Success;
@@ -335,25 +334,27 @@ namespace SPTAG
         {
             if (nullptr == m_extraSearcher) return ErrorCode::EmptyIndex;
 
-            COMMON::QueryResultSet<T> newResults(*((COMMON::QueryResultSet<T>*)&p_query));
-            for (int i = 0; i < newResults.GetResultNum() && !m_options.m_useKV; ++i)
-            {
-                auto res = newResults.GetResult(i);
-                if (res->VID == -1) break;
+            std::unique_ptr<COMMON::QueryResultSet<T>> newResults;
+            if (m_vectorTranslateMap.get() != nullptr) {
+                newResults.reset(new COMMON::QueryResultSet<T>(*((COMMON::QueryResultSet<T>*) & p_query)));
+                for (int i = 0; i < newResults->GetResultNum(); ++i)
+                {
+                    auto res = newResults->GetResult(i);
+                    if (res->VID == -1) break;
 
-                auto global_VID = static_cast<SizeType>((m_vectorTranslateMap.get())[res->VID]);
-                if (truth && truth->count(global_VID)) (*found)[res->VID].insert(global_VID);
-                res->VID = global_VID;
-                if (res->VID == MaxSize) {
-                    res->VID = -1;
-                    res->Dist = MaxDist;
+                    auto global_VID = static_cast<SizeType>((m_vectorTranslateMap.get())[res->VID]);
+                    if (truth && truth->count(global_VID)) (*found)[res->VID].insert(global_VID);
+                    res->VID = global_VID;
                 }
+                newResults->Reverse();
             }
-            newResults.Reverse();
+            else {
+                newResults.reset(new COMMON::QueryResultSet<T>(p_query.GetTarget(), p_query.GetResultNum()));
+            }
 
             if (m_workspace.get() == nullptr) {
                 m_workspace.reset(new ExtraWorkSpace());
-                m_workspace->Initialize(m_options.m_maxCheck, m_options.m_hashExp, m_options.m_searchInternalResultNum, max(m_options.m_postingPageLimit, m_options.m_searchPostingPageLimit + 1) << PageSizeEx, m_options.m_enableDataCompression);
+                m_workspace->Initialize(m_options.m_maxCheck, m_options.m_hashExp, m_options.m_searchInternalResultNum, min(m_options.m_postingPageLimit, m_options.m_searchPostingPageLimit + 1) << PageSizeEx, m_options.m_enableDataCompression);
             }
             m_workspace->m_deduper.clear();
 
@@ -372,11 +373,11 @@ namespace SPTAG
                     m_workspace->m_postingIDs.emplace_back(res->VID);
                 }
 
-                m_extraSearcher->SearchIndex(m_workspace.get(), newResults, m_index, p_stats, truth, found);
+                m_extraSearcher->SearchIndex(m_workspace.get(), *newResults, m_index, p_stats, truth, found);
             }
 
-            newResults.SortResult();
-            std::copy(newResults.GetResults(), newResults.GetResults() + newResults.GetResultNum(), p_query.GetResults());
+            newResults->SortResult();
+            std::copy(newResults.GetResults(), newResults->GetResults() + newResults->GetResultNum(), p_query.GetResults());
 
             return ErrorCode::Success;
         }
@@ -769,14 +770,9 @@ namespace SPTAG
                 if (m_options.m_buildSsdIndex) {
                     if (!m_options.m_excludehead) {
                         LOG(Helper::LogLevel::LL_Info, "Include all vectors into SSD index...\n");
-                        std::shared_ptr<Helper::DiskIO> ptr = SPTAG::f_createIO();
-                        if (ptr == nullptr || !ptr->Initialize((m_options.m_indexDirectory + FolderSep + m_options.m_headIDFile).c_str(), std::ios::binary | std::ios::out)) {
-                            LOG(Helper::LogLevel::LL_Error, "Failed to open headIDFile file:%s for overwrite\n", (m_options.m_indexDirectory + FolderSep + m_options.m_headIDFile).c_str());
-                            return ErrorCode::Fail;
-                        }
-                        std::uint64_t vid = (std::uint64_t)MaxSize;
-                        for (int i = 0; i < m_index->GetNumSamples(); i++) {
-                            IOBINARY(ptr, WriteBinary, sizeof(std::uint64_t), (char*)(&vid));
+                        if (fileexists((m_options.m_indexDirectory + FolderSep + m_options.m_headIDFile).c_str()) &&
+                            remove((m_options.m_indexDirectory + FolderSep + m_options.m_headIDFile).c_str()) != 0) {
+                            LOG(Helper::LogLevel::LL_Warning, "Head vector file can't be removed.\n");
                         }
                     }
 
@@ -796,7 +792,7 @@ namespace SPTAG
                 }
 
                 if (m_extraSearcher != nullptr) {
-                    if (!m_options.m_useKV) {
+                    if (m_options.m_excludehead) {
                         m_vectorTranslateMap.reset(new std::uint64_t[m_index->GetNumSamples()], std::default_delete<std::uint64_t[]>());
                         std::shared_ptr<Helper::DiskIO> ptr = SPTAG::f_createIO();
                         if (ptr == nullptr || !ptr->Initialize((m_options.m_indexDirectory + FolderSep + m_options.m_headIDFile).c_str(), std::ios::binary | std::ios::in)) {
@@ -805,10 +801,8 @@ namespace SPTAG
                         }
                         IOBINARY(ptr, ReadBinary, sizeof(std::uint64_t) * m_index->GetNumSamples(), (char*)(m_vectorTranslateMap.get()));
                     }
-                    else {
-                        if (m_options.m_preReassign) {
-                            m_extraSearcher->RefineIndex(p_reader, m_index);
-                        }
+                    if (m_options.m_useKV && m_options.m_preReassign) {
+                        m_extraSearcher->RefineIndex(p_reader, m_index);
                     }
                 }
             }
