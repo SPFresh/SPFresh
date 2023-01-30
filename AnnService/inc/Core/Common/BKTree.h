@@ -420,7 +420,7 @@ namespace SPTAG
 
             float bestLambdaFactor = 100.0f, bestCountStd = (std::numeric_limits<float>::max)();
             for (float lambdaFactor = 0.001f; lambdaFactor <= 1000.0f + 1e-3; lambdaFactor *= 10) {
-                float CountStd;
+                float CountStd = (std::numeric_limits<float>::max)();
                 if (args.m_pQuantizer)
                 {
                     switch (args.m_pQuantizer->GetReconstructType())
