@@ -349,7 +349,7 @@ namespace SPTAG
                 newResults->Reverse();
             }
             else {
-                newResults.reset(new COMMON::QueryResultSet<T>(p_query.GetTarget(), p_query.GetResultNum()));
+                newResults.reset(new COMMON::QueryResultSet<T>((T*)p_query.GetTarget(), p_query.GetResultNum()));
             }
 
             if (m_workspace.get() == nullptr) {
@@ -377,7 +377,7 @@ namespace SPTAG
             }
 
             newResults->SortResult();
-            std::copy(newResults.GetResults(), newResults->GetResults() + newResults->GetResultNum(), p_query.GetResults());
+            std::copy(newResults->GetResults(), newResults->GetResults() + newResults->GetResultNum(), p_query.GetResults());
 
             return ErrorCode::Success;
         }
