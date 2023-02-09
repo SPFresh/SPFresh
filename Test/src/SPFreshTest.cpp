@@ -617,16 +617,6 @@ namespace SPTAG {
                 static_cast<uint32_t>(step));
 
                 LOG(Helper::LogLevel::LL_Info,"During Update\n");
-                // while(!p_index->AllFinishedExceptReassign())
-                // {
-                //     std::this_thread::sleep_for(std::chrono::milliseconds(20));
-                // }
-                // double appendSyncingCost = sw.getElapsedSec();
-                // LOG(Helper::LogLevel::LL_Info,
-                // "Finish syncing append in %.3lf seconds, actuall throughput is %.2lf, insertion count %u.\n",
-                // appendSyncingCost,
-                // step / appendSyncingCost,
-                // static_cast<uint32_t>(step));
 
                 while(!p_index->AllFinished())
                 {
@@ -734,18 +724,6 @@ namespace SPTAG {
                     p_index->GetIndexStat(finishedInsert, true, true);
 
                     ShowMemoryStatus(vectorSet, sw.getElapsedSec());
-                    // p_opts.m_calTruth = calTruthOrigin;
-                    // StableSearch(p_index, numThreads, querySet, vectorSet, searchTimes, p_opts.m_queryCountLimit, internalResultNum, curCount, p_opts, sw.getElapsedSec());
-                    // if (!p_opts.m_vectorPath.empty() && fileexists(p_opts.m_vectorPath.c_str())) {
-                    //     std::shared_ptr<Helper::ReaderOptions> vectorOptions(new Helper::ReaderOptions(p_opts.m_valueType, p_opts.m_dim, p_opts.m_vectorType, p_opts.m_vectorDelimiter));
-                    //     auto vectorReader = Helper::VectorSetReader::CreateInstance(vectorOptions);
-                    //     if (ErrorCode::Success == vectorReader->LoadFile(p_opts.m_fullVectorPath))
-                    //     {
-                    //         p_index->Rebuild(vectorReader, curCount);
-                    //     }
-                    // }
-                    //TODO: p_index->CalculatePostingDistribution();
-                    // p_index->ForceCompaction();
 
                     p_opts.m_calTruth = calTruthOrigin;
                     if (p_opts.m_onlySearchFinalBatch && batch - 1 != i) continue;
@@ -762,6 +740,7 @@ namespace SPTAG {
                     }
                 }
             }
+            
 
             template <typename ValueType>
             void SearchSPFresh(SPANN::Index<ValueType>* p_index)
