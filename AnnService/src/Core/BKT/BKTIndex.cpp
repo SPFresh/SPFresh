@@ -336,7 +336,7 @@ namespace SPTAG
 
             omp_set_num_threads(m_iNumberOfThreads);
 
-            m_pSamples.Initialize(p_vectorNum, p_dimension, m_iDataBlockSize, m_iDataCapacity, (T*)p_data, p_shareOwnership);
+            m_pSamples.Initialize(p_vectorNum, p_dimension, m_iDataBlockSize, m_iDataCapacity, p_data, p_shareOwnership);
             m_deletedID.Initialize(p_vectorNum, m_iDataBlockSize, m_iDataCapacity);
 
             if (DistCalcMethod::Cosine == m_iDistCalcMethod && !p_normalized)
@@ -516,7 +516,7 @@ namespace SPTAG
 
                 if (p_dimension != GetFeatureDim()) return ErrorCode::DimensionSizeMismatch;
 
-                if (m_pSamples.AddBatch((const T*)p_data, p_vectorNum) != ErrorCode::Success || 
+                if (m_pSamples.AddBatch(p_vectorNum, (const T*)p_data) != ErrorCode::Success || 
                     m_pGraph.AddBatch(p_vectorNum) != ErrorCode::Success || 
                     m_deletedID.AddBatch(p_vectorNum) != ErrorCode::Success) {
                     LOG(Helper::LogLevel::LL_Error, "Memory Error: Cannot alloc space for vectors!\n");
@@ -582,7 +582,7 @@ namespace SPTAG
                 if (p_dimension != GetFeatureDim()) return ErrorCode::DimensionSizeMismatch;
 
 
-                if (m_pSamples.AddBatch((const T*)p_data, p_vectorNum) != ErrorCode::Success ||
+                if (m_pSamples.AddBatch(p_vectorNum, (const T*)p_data) != ErrorCode::Success ||
                     m_pGraph.AddBatch(p_vectorNum) != ErrorCode::Success ||
                     m_deletedID.AddBatch(p_vectorNum) != ErrorCode::Success) {
                     LOG(Helper::LogLevel::LL_Error, "Memory Error: Cannot alloc space for vectors!\n");
