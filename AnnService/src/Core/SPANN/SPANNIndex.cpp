@@ -1017,7 +1017,11 @@ namespace SPTAG
                     GetEnumValueType<T>(), p_dimension, p_vectorNum));
             }
             SizeType p_id = m_extraSearcher->SearchVector(vectorSet, m_index);
-            if (p_id == -1) return ErrorCode::VectorNotFound;
+            if (p_id == -1) {
+                LOG(Helper::LogLevel::LL_Info, "Can't find vector\n");
+                exit(1);
+                // return ErrorCode::VectorNotFound;
+            }
             else return DeleteIndex(p_id);
         }
     }

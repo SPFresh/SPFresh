@@ -870,6 +870,7 @@ namespace SPTAG {
 
             template <typename ValueType>
             void DeleteVectorsBySet(SPANN::Index<ValueType>* p_index, 
+                std::shared_ptr<SPTAG::VectorSet> vectorSet,
                 std::vector<SizeType>& deleteSet,
                 int updateSize,
                 SPANN::Options& p_opts)
@@ -886,7 +887,8 @@ namespace SPTAG {
                         {
                             LOG(Helper::LogLevel::LL_Info, "Delete: Sent %.2lf%%...\n", index * 100.0 / updateSize);
                         }
-                        p_index->DeleteIndex(deleteSet[index]);
+                        // p_index->DeleteIndex(deleteSet[index]);
+                        p_index->DeleteIndex(vectorSet->GetVector(deleteSet[index]), 1);
                     }
                     else
                     {
@@ -949,13 +951,13 @@ namespace SPTAG {
                 int updateSize;
                 std::vector<SizeType> insertSet;
                 std::vector<SizeType> deleteSet;
-                std::vector<SizeType> indices;
                 std::vector<SizeType> reverseIndices;
-                indices.resize(vectorSet->Count());
                 reverseIndices.resize(vectorSet->Count());
-                for (int i = 0; i < curCount; i++) {
-                    indices[i] = i;
-                }
+                // std::vector<SizeType> indices;
+                // indices.resize(vectorSet->Count());
+                // for (int i = 0; i < curCount; i++) {
+                //     indices[i] = i;
+                // }
                 for (int i = 0; i < days; i++)
                 {   
 
@@ -963,11 +965,25 @@ namespace SPTAG {
                     std::string mappingFileName = p_opts.m_updateMappingPrefix + std::to_string(i);
                     LoadUpdateTrace(traceFileName, updateSize, insertSet, deleteSet);
                     LoadUpdateMapping(mappingFileName, reverseIndices);
-                    LOG(Helper::LogLevel::LL_Info, "Updating day: %d: numThread: %d, updateSize: ,total days: %d.\n", i, insertThreads, updateSize, days);
+                    LOG(Helper::LogLevel::LL_Info, "Updating day: %d: numThread: %d, updateSize: %d,total days: %d.\n", i, insertThreads, updateSize, days);
 
-                    for (int j = 0; j < updateSize; j++) {
-                        deleteSet[j] = indices[deleteSet[j]];
-                    }
+                    // for (int j = 0; j < updateSize; j++) {
+                    //     deleteSet[j] = indices[deleteSet[j]];
+                    // }
+
+                    // std::future<void> delete_future =
+                    //     std::async(std::launch::async, DeleteVectorsBySet<ValueType>, p_index,
+                    //             std::ref(deleteSet), updateSize, std::ref(p_opts));
+
+                    std::future<void> delete_future =
+                        std::async(std::launch::async, DeleteVectorsBySet<ValueType>, p_index,
+                                vectorSet, std::ref(deleteSet), updateSize, std::ref(p_opts));
+
+                    std::future_status delete_status;
+
+                    // do {
+                    //     delete_status = delete_future.wait_for(std::chrono::seconds(1));
+                    // } while (delete_status != std::future_status::ready);
 
                     std::future<void> insert_future =
                         std::async(std::launch::async, InsertVectorsBySet<ValueType>, p_index,
@@ -975,28 +991,23 @@ namespace SPTAG {
 
                     std::future_status insert_status;
 
-                    std::future<void> delete_future =
-                        std::async(std::launch::async, DeleteVectorsBySet<ValueType>, p_index,
-                                std::ref(deleteSet), updateSize, std::ref(p_opts));
-
-                    std::future_status delete_status;
-
                     std::string tempFileName;
                     p_opts.m_calTruth = false;
                     do {
-                        insert_status = insert_future.wait_for(std::chrono::seconds(3));
-                        if (insert_status == std::future_status::timeout) {
+                        insert_status = insert_future.wait_for(std::chrono::seconds(1));
+                        delete_status = delete_future.wait_for(std::chrono::seconds(1));
+                        if (insert_status == std::future_status::timeout || delete_status == std::future_status::timeout) {
                             ShowMemoryStatus(vectorSet, sw.getElapsedSec());
                             p_index->GetIndexStat(-1, false, false);
                             p_index->GetDBStat();
                             if(p_opts.m_searchDuringUpdate) StableSearch(p_index, numThreads, querySet, vectorSet, searchTimes, p_opts.m_queryCountLimit, internalResultNum, tempFileName, p_opts, sw.getElapsedSec());
                             p_index->GetDBStat();
                         }
-                    }while (insert_status != std::future_status::ready);
+                    } while (insert_status != std::future_status::ready || delete_status != std::future_status::ready);
 
-                    for (int j = 0; j < updateSize; j++) {
-                        indices[insertSet[j]] = curCount + i * updateSize + j;
-                    }
+                    // for (int j = 0; j < updateSize; j++) {
+                    //     indices[insertSet[j]] = curCount + i * updateSize + j;
+                    // }
 
                     p_index->GetIndexStat(updateSize, true, true);
 
