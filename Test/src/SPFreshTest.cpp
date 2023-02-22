@@ -888,7 +888,7 @@ namespace SPTAG {
                             LOG(Helper::LogLevel::LL_Info, "Delete: Sent %.2lf%%...\n", index * 100.0 / updateSize);
                         }
                         // p_index->DeleteIndex(deleteSet[index]);
-                        p_index->DeleteIndex(vectorSet->GetVector(deleteSet[index]), 1);
+                        p_index->DeleteIndex(vectorSet->GetVector(deleteSet[index]), deleteSet[index]);
                     }
                     else
                     {
@@ -951,8 +951,8 @@ namespace SPTAG {
                 int updateSize;
                 std::vector<SizeType> insertSet;
                 std::vector<SizeType> deleteSet;
-                std::vector<SizeType> reverseIndices;
-                reverseIndices.resize(vectorSet->Count());
+                // std::vector<SizeType> reverseIndices;
+                // reverseIndices.resize(vectorSet->Count());
                 // std::vector<SizeType> indices;
                 // indices.resize(vectorSet->Count());
                 // for (int i = 0; i < curCount; i++) {
@@ -964,7 +964,7 @@ namespace SPTAG {
                     std::string traceFileName = p_opts.m_updateFilePrefix + std::to_string(i);
                     std::string mappingFileName = p_opts.m_updateMappingPrefix + std::to_string(i);
                     LoadUpdateTrace(traceFileName, updateSize, insertSet, deleteSet);
-                    LoadUpdateMapping(mappingFileName, reverseIndices);
+                    // LoadUpdateMapping(mappingFileName, reverseIndices);
                     LOG(Helper::LogLevel::LL_Info, "Updating day: %d: numThread: %d, updateSize: %d,total days: %d.\n", i, insertThreads, updateSize, days);
 
                     // for (int j = 0; j < updateSize; j++) {
@@ -1021,12 +1021,12 @@ namespace SPTAG {
                     {
                         for (int iterInternalResultNum = p_opts.m_minInternalResultNum; iterInternalResultNum <= p_opts.m_maxInternalResultNum; iterInternalResultNum += p_opts.m_stepInternalResultNum) 
                         {
-                            StableSearch(p_index, numThreads, querySet, vectorSet, searchTimes, p_opts.m_queryCountLimit, iterInternalResultNum, truthFileName, p_opts, sw.getElapsedSec(), &reverseIndices);
+                            StableSearch(p_index, numThreads, querySet, vectorSet, searchTimes, p_opts.m_queryCountLimit, iterInternalResultNum, truthFileName, p_opts, sw.getElapsedSec());
                         }
                     }
                     else 
                     {
-                        StableSearch(p_index, numThreads, querySet, vectorSet, searchTimes, p_opts.m_queryCountLimit, internalResultNum, truthFileName, p_opts, sw.getElapsedSec(), &reverseIndices);
+                        StableSearch(p_index, numThreads, querySet, vectorSet, searchTimes, p_opts.m_queryCountLimit, internalResultNum, truthFileName, p_opts, sw.getElapsedSec());
                     }
                 }
             }

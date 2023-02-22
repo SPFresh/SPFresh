@@ -1375,7 +1375,7 @@ namespace SPTAG::SPANN {
         }
 
         SizeType SearchVector(std::shared_ptr<VectorSet>& p_vectorSet,
-            std::shared_ptr<VectorIndex> p_index ) override {
+            std::shared_ptr<VectorIndex> p_index) override {
             
             QueryResult queryResults(p_vectorSet->GetVector(0), m_opt->m_internalResultNum, false);
             p_index->SearchIndex(queryResults);
