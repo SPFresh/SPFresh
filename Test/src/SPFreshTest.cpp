@@ -173,7 +173,7 @@ namespace SPTAG {
             }
 
             template <typename T>
-            static float CalculateRecallSPFresh(VectorIndex* index, std::vector<QueryResult>& results, const std::vector<std::set<SizeType>>& truth, int K, int truthK, std::shared_ptr<SPTAG::VectorSet> querySet, std::shared_ptr<SPTAG::VectorSet> vectorSet, SizeType NumQuerys, std::vector<SizeType>* reverseIndices = nullptr, std::ofstream* log = nullptr, bool debug = false)
+            static float CalculateRecallSPFresh(VectorIndex* index, std::vector<QueryResult>& results, const std::vector<std::set<SizeType>>& truth, int K, int truthK, std::shared_ptr<SPTAG::VectorSet> querySet, std::shared_ptr<SPTAG::VectorSet> vectorSet, SizeType NumQuerys, std::ofstream* log = nullptr, bool debug = false)
             {
                 float meanrecall = 0, minrecall = MaxDist, maxrecall = 0, stdrecall = 0;
                 std::vector<float> thisrecall(NumQuerys, 0);
@@ -189,9 +189,7 @@ namespace SPTAG {
                             if (visited[j] || results[i].GetResult(j)->VID < 0) continue;
                             if (vectorSet != nullptr) {
                                 float dist = results[i].GetResult(j)->Dist;
-                                float truthDist;
-                                if (reverseIndices != nullptr) truthDist = COMMON::DistanceUtils::ComputeDistance((const T*)querySet->GetVector(i), (const T*)vectorSet->GetVector(reverseIndices->at(id)), vectorSet->Dimension(), index->GetDistCalcMethod());
-                                else truthDist = COMMON::DistanceUtils::ComputeDistance((const T*)querySet->GetVector(i), (const T*)vectorSet->GetVector(id), vectorSet->Dimension(), index->GetDistCalcMethod());
+                                float truthDist = COMMON::DistanceUtils::ComputeDistance((const T*)querySet->GetVector(i), (const T*)vectorSet->GetVector(id), vectorSet->Dimension(), index->GetDistCalcMethod());
                                 if (index->GetDistCalcMethod() == SPTAG::DistCalcMethod::Cosine && fabs(dist - truthDist) < Epsilon) {
                                     thisrecall[i] += 1;
                                     visited[j] = true;
@@ -533,8 +531,7 @@ namespace SPTAG {
                 int internalResultNum,
                 std::string& truthFileName,
                 SPANN::Options& p_opts,
-                double second = 0,
-                std::vector<SizeType>* reverseIndices = nullptr)
+                double second = 0)
             {
                 if (avgStatsNum == 0) return;
                 int numQueries = querySet->Count();
@@ -569,7 +566,7 @@ namespace SPTAG {
                         std::vector<std::set<SizeType>> truth;
                         int truthK = p_opts.m_resultNum;
                         LoadTruth(p_opts, truth, numQueries, truthFileName, truthK);
-                        CalculateRecallSPFresh<ValueType>((p_index->GetMemoryIndex()).get(), results, truth, p_opts.m_resultNum, truthK, querySet, vectorSet, numQueries, reverseIndices);
+                        CalculateRecallSPFresh<ValueType>((p_index->GetMemoryIndex()).get(), results, truth, p_opts.m_resultNum, truthK, querySet, vectorSet, numQueries);
                     } else {
                         OutputResult<ValueType>(GetTruthFileName(p_opts.m_searchResult, second), results, p_opts.m_resultNum);
                     }
@@ -715,7 +712,6 @@ namespace SPTAG {
                         if (insert_status == std::future_status::timeout) {
                             ShowMemoryStatus(vectorSet, sw.getElapsedSec());
                             p_index->GetIndexStat(-1, false, false);
-                            p_index->GetDBStat();
                             if(p_opts.m_searchDuringUpdate) StableSearch(p_index, numThreads, querySet, vectorSet, searchTimes, p_opts.m_queryCountLimit, internalResultNum, tempFileName, p_opts, sw.getElapsedSec());
                             p_index->GetDBStat();
                         }
@@ -800,6 +796,15 @@ namespace SPTAG {
                     exit(1);
                 }
 
+                // for (int i = 0; i < updateSize; i++) {
+                //     for (int j = i+1; j < updateSize; j++) {
+                //         if (deleteSet[i] == deleteSet[j]) {
+                //             LOG(Helper::LogLevel::LL_Info, "DeleteSet Error\n");
+                //             exit(1);
+                //         }
+                //     }
+                // }
+
                 insertSet.clear();
                 insertSet.resize(updateSize);
 
@@ -809,6 +814,15 @@ namespace SPTAG {
                     LOG(Helper::LogLevel::LL_Error, "Insert Set Error!\n");
                     exit(1);
                 }
+
+                // for (int i = 0; i < updateSize; i++) {
+                //     for (int j = i+1; j < updateSize; j++) {
+                //         if (insertSet[i] == insertSet[j]) {
+                //             LOG(Helper::LogLevel::LL_Info, "InsertSet Error\n");
+                //             exit(1);
+                //         }
+                //     }
+                // }
             }
 
             template <typename ValueType>
@@ -870,31 +884,63 @@ namespace SPTAG {
 
             template <typename ValueType>
             void DeleteVectorsBySet(SPANN::Index<ValueType>* p_index, 
+                int deleteThreads, 
                 std::shared_ptr<SPTAG::VectorSet> vectorSet,
                 std::vector<SizeType>& deleteSet,
                 int updateSize,
-                SPANN::Options& p_opts)
+                SPANN::Options& p_opts,
+                int batch)
             {
-
-                size_t index = 0;
+                std::vector<std::thread> threads;
+                StopWSPFresh sw;
                 std::atomic_size_t vectorsSent(0);
-                while (true)
+                auto func = [&]()
                 {
-                    index = vectorsSent.fetch_add(1);
-                    if (index < updateSize)
+                    while (true)
                     {
-                        if ((index & ((1 << 14) - 1)) == 0)
+                        size_t index = 0;
+                        index = vectorsSent.fetch_add(1);
+                        if (index < updateSize)
                         {
-                            LOG(Helper::LogLevel::LL_Info, "Delete: Sent %.2lf%%...\n", index * 100.0 / updateSize);
+                            if ((index & ((1 << 14) - 1)) == 0)
+                            {
+                                LOG(Helper::LogLevel::LL_Info, "Delete: Sent %.2lf%%...\n", index * 100.0 / updateSize);
+                            }
+                            p_index->DeleteIndex(vectorSet->GetVector(deleteSet[index]), deleteSet[index]);
+                            // p_index->DeleteIndex(deleteSet[index]);
+                            // if (p_index->DeleteIndex(vectorSet->GetVector(deleteSet[index]), deleteSet[index]) == ErrorCode::ExternalAbort) {
+                            //     std::vector<SizeType> tempInsertSet;
+                            //     std::vector<SizeType> tempDeleteSet;
+                            //     for (int i = 0; i < batch; i++) {
+                            //         std::string traceFileName = p_opts.m_updateFilePrefix + std::to_string(i);
+                            //         LoadUpdateTrace(traceFileName, updateSize, tempInsertSet, tempDeleteSet);
+                            //         for (int j = 0; j < updateSize; j++) {
+                            //             if (tempInsertSet[j] == deleteSet[index]) {
+                            //                 LOG(Helper::LogLevel::LL_Info,"Insert %d in batch %d\n", deleteSet[index], j);
+                            //             }
+                            //             if (tempDeleteSet[j] == deleteSet[index]) {
+                            //                 LOG(Helper::LogLevel::LL_Info,"Delete %d in batch %d\n", deleteSet[index], j);
+                            //             }
+                            //         }
+                            //     }
+                            //     exit(1);
+                            // }
                         }
-                        // p_index->DeleteIndex(deleteSet[index]);
-                        p_index->DeleteIndex(vectorSet->GetVector(deleteSet[index]), deleteSet[index]);
+                        else
+                        {
+                            return;
+                        }
                     }
-                    else
-                    {
-                        return;
-                    }
-                }
+                };
+                for (int j = 0; j < deleteThreads; j++) { threads.emplace_back(func); }
+                for (auto& thread : threads) { thread.join(); }
+
+                double sendingCost = sw.getElapsedSec();
+                LOG(Helper::LogLevel::LL_Info,
+                "Delete: Finish sending in %.3lf seconds, sending throughput is %.2lf , deletion count %u.\n",
+                sendingCost,
+                updateSize / sendingCost,
+                static_cast<uint32_t>(updateSize));
             }
             
             template <typename ValueType>
@@ -951,13 +997,6 @@ namespace SPTAG {
                 int updateSize;
                 std::vector<SizeType> insertSet;
                 std::vector<SizeType> deleteSet;
-                // std::vector<SizeType> reverseIndices;
-                // reverseIndices.resize(vectorSet->Count());
-                // std::vector<SizeType> indices;
-                // indices.resize(vectorSet->Count());
-                // for (int i = 0; i < curCount; i++) {
-                //     indices[i] = i;
-                // }
                 for (int i = 0; i < days; i++)
                 {   
 
@@ -977,7 +1016,7 @@ namespace SPTAG {
 
                     std::future<void> delete_future =
                         std::async(std::launch::async, DeleteVectorsBySet<ValueType>, p_index,
-                                vectorSet, std::ref(deleteSet), updateSize, std::ref(p_opts));
+                                insertThreads, vectorSet, std::ref(deleteSet), updateSize, std::ref(p_opts), i);
 
                     std::future_status delete_status;
 
@@ -994,8 +1033,8 @@ namespace SPTAG {
                     std::string tempFileName;
                     p_opts.m_calTruth = false;
                     do {
-                        insert_status = insert_future.wait_for(std::chrono::seconds(1));
-                        delete_status = delete_future.wait_for(std::chrono::seconds(1));
+                        insert_status = insert_future.wait_for(std::chrono::seconds(10));
+                        delete_status = delete_future.wait_for(std::chrono::seconds(10));
                         if (insert_status == std::future_status::timeout || delete_status == std::future_status::timeout) {
                             ShowMemoryStatus(vectorSet, sw.getElapsedSec());
                             p_index->GetIndexStat(-1, false, false);
