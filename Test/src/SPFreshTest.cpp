@@ -696,7 +696,6 @@ namespace SPTAG {
                 LOG(Helper::LogLevel::LL_Info, "Start updating...\n");
                 for (int i = 0; i < batch; i++)
                 {   
-                    // p_index->QuantifyAssumptionBrokenTotally();
                     LOG(Helper::LogLevel::LL_Info, "Updating Batch %d: numThread: %d, step: %d.\n", i, insertThreads, step);
 
                     std::future<void> insert_future =
@@ -796,15 +795,6 @@ namespace SPTAG {
                     exit(1);
                 }
 
-                // for (int i = 0; i < updateSize; i++) {
-                //     for (int j = i+1; j < updateSize; j++) {
-                //         if (deleteSet[i] == deleteSet[j]) {
-                //             LOG(Helper::LogLevel::LL_Info, "DeleteSet Error\n");
-                //             exit(1);
-                //         }
-                //     }
-                // }
-
                 insertSet.clear();
                 insertSet.resize(updateSize);
 
@@ -814,15 +804,6 @@ namespace SPTAG {
                     LOG(Helper::LogLevel::LL_Error, "Insert Set Error!\n");
                     exit(1);
                 }
-
-                // for (int i = 0; i < updateSize; i++) {
-                //     for (int j = i+1; j < updateSize; j++) {
-                //         if (insertSet[i] == insertSet[j]) {
-                //             LOG(Helper::LogLevel::LL_Info, "InsertSet Error\n");
-                //             exit(1);
-                //         }
-                //     }
-                // }
             }
 
             template <typename ValueType>
@@ -835,6 +816,7 @@ namespace SPTAG {
             {
                 StopWSPFresh sw;
                 std::vector<std::thread> threads;
+                std::vector<double> latency_vector(updateSize);
 
                 std::atomic_size_t vectorsSent(0);
 
@@ -850,7 +832,10 @@ namespace SPTAG {
                             {
                                 LOG(Helper::LogLevel::LL_Info, "Insert: Sent %.2lf%%...\n", index * 100.0 / updateSize);
                             }
+                            auto insertBegin = std::chrono::high_resolution_clock::now();
                             p_index->AddIndex(vectorSet->GetVector(insertSet[index]), 1, p_opts.m_dim, nullptr);
+                            auto insertEnd = std::chrono::high_resolution_clock::now();
+                            latency_vector[index] = std::chrono::duration_cast<std::chrono::microseconds>(insertEnd - insertBegin).count();
                         }
                         else
                         {
@@ -880,6 +865,13 @@ namespace SPTAG {
                 syncingCost,
                 updateSize / syncingCost,
                 static_cast<uint32_t>(updateSize));
+                LOG(Helper::LogLevel::LL_Info, "Insert Latency Distribution:\n");
+                PrintPercentiles<double, double>(latency_vector,
+                    [](const double& ss) -> double
+                    {
+                        return ss;
+                    },
+                    "%.3lf");
             }
 
             template <typename ValueType>
@@ -891,6 +883,7 @@ namespace SPTAG {
                 SPANN::Options& p_opts,
                 int batch)
             {
+                std::vector<double> latency_vector(updateSize);
                 std::vector<std::thread> threads;
                 StopWSPFresh sw;
                 std::atomic_size_t vectorsSent(0);
@@ -906,25 +899,10 @@ namespace SPTAG {
                             {
                                 LOG(Helper::LogLevel::LL_Info, "Delete: Sent %.2lf%%...\n", index * 100.0 / updateSize);
                             }
+                            auto deleteBegin = std::chrono::high_resolution_clock::now();
                             p_index->DeleteIndex(vectorSet->GetVector(deleteSet[index]), deleteSet[index]);
-                            // p_index->DeleteIndex(deleteSet[index]);
-                            // if (p_index->DeleteIndex(vectorSet->GetVector(deleteSet[index]), deleteSet[index]) == ErrorCode::ExternalAbort) {
-                            //     std::vector<SizeType> tempInsertSet;
-                            //     std::vector<SizeType> tempDeleteSet;
-                            //     for (int i = 0; i < batch; i++) {
-                            //         std::string traceFileName = p_opts.m_updateFilePrefix + std::to_string(i);
-                            //         LoadUpdateTrace(traceFileName, updateSize, tempInsertSet, tempDeleteSet);
-                            //         for (int j = 0; j < updateSize; j++) {
-                            //             if (tempInsertSet[j] == deleteSet[index]) {
-                            //                 LOG(Helper::LogLevel::LL_Info,"Insert %d in batch %d\n", deleteSet[index], j);
-                            //             }
-                            //             if (tempDeleteSet[j] == deleteSet[index]) {
-                            //                 LOG(Helper::LogLevel::LL_Info,"Delete %d in batch %d\n", deleteSet[index], j);
-                            //             }
-                            //         }
-                            //     }
-                            //     exit(1);
-                            // }
+                            auto deleteEnd = std::chrono::high_resolution_clock::now();
+                            latency_vector[index] = std::chrono::duration_cast<std::chrono::microseconds>(deleteEnd - deleteBegin).count();
                         }
                         else
                         {
@@ -941,6 +919,13 @@ namespace SPTAG {
                 sendingCost,
                 updateSize / sendingCost,
                 static_cast<uint32_t>(updateSize));
+                LOG(Helper::LogLevel::LL_Info, "Delete Latency Distribution:\n");
+                PrintPercentiles<double, double>(latency_vector,
+                    [](const double& ss) -> double
+                    {
+                        return ss;
+                    },
+                    "%.3lf");
             }
             
             template <typename ValueType>
@@ -1003,26 +988,13 @@ namespace SPTAG {
                     std::string traceFileName = p_opts.m_updateFilePrefix + std::to_string(i);
                     std::string mappingFileName = p_opts.m_updateMappingPrefix + std::to_string(i);
                     LoadUpdateTrace(traceFileName, updateSize, insertSet, deleteSet);
-                    // LoadUpdateMapping(mappingFileName, reverseIndices);
                     LOG(Helper::LogLevel::LL_Info, "Updating day: %d: numThread: %d, updateSize: %d,total days: %d.\n", i, insertThreads, updateSize, days);
-
-                    // for (int j = 0; j < updateSize; j++) {
-                    //     deleteSet[j] = indices[deleteSet[j]];
-                    // }
-
-                    // std::future<void> delete_future =
-                    //     std::async(std::launch::async, DeleteVectorsBySet<ValueType>, p_index,
-                    //             std::ref(deleteSet), updateSize, std::ref(p_opts));
 
                     std::future<void> delete_future =
                         std::async(std::launch::async, DeleteVectorsBySet<ValueType>, p_index,
                                 insertThreads, vectorSet, std::ref(deleteSet), updateSize, std::ref(p_opts), i);
 
                     std::future_status delete_status;
-
-                    // do {
-                    //     delete_status = delete_future.wait_for(std::chrono::seconds(1));
-                    // } while (delete_status != std::future_status::ready);
 
                     std::future<void> insert_future =
                         std::async(std::launch::async, InsertVectorsBySet<ValueType>, p_index,
@@ -1044,10 +1016,6 @@ namespace SPTAG {
                         }
                     } while (insert_status != std::future_status::ready || delete_status != std::future_status::ready);
 
-                    // for (int j = 0; j < updateSize; j++) {
-                    //     indices[insertSet[j]] = curCount + i * updateSize + j;
-                    // }
-
                     p_index->GetIndexStat(updateSize, true, true);
 
                     ShowMemoryStatus(vectorSet, sw.getElapsedSec());
@@ -1067,6 +1035,7 @@ namespace SPTAG {
                     {
                         StableSearch(p_index, numThreads, querySet, vectorSet, searchTimes, p_opts.m_queryCountLimit, internalResultNum, truthFileName, p_opts, sw.getElapsedSec());
                     }
+                    p_index->ForceCompaction();
                 }
             }
 
@@ -1162,6 +1131,11 @@ namespace SPTAG {
                         index->SetParameter(KV.first, KV.second, sectionKV.first);
                     }
                 }
+
+                // if (index->LoadIndex(configurationPath, index) != ErrorCode::Success) {
+                //     LOG(Helper::LogLevel::LL_Error, "Failed to load index.\n");
+                //     exit(1);
+                // }
 
                 if (index->BuildIndex() != ErrorCode::Success) {
                     LOG(Helper::LogLevel::LL_Error, "Failed to build index.\n");

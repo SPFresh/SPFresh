@@ -1018,30 +1018,7 @@ namespace SPTAG
             }
             SizeType p_id = m_extraSearcher->SearchVector(vectorSet, m_index);
             if (p_id == -1) return ErrorCode::ExternalAbort;
-            // int i = 128;
-            // while (p_id == -1 & i <= 1024) {
-            //     // LOG(Helper::LogLevel::LL_Info, "ID: %d\n", p_vectorNum);
-            //     // if (m_versionMap.Deleted(p_vectorNum)) LOG(Helper::LogLevel::LL_Info, "Already Deleted\n");
-            //     p_id = m_extraSearcher->SearchVector(vectorSet, m_index, i);
-            //     i *= 2;
-            //     // if (p_id != -1) LOG(Helper::LogLevel::LL_Info, "ID: %d found in %d\n", p_vectorNum, i);
-            //     // exit(1);
-            //     // return ErrorCode::VectorNotFound;
-            // }
-            // if (p_id == -1) {
-            //     LOG(Helper::LogLevel::LL_Info, "ID: %d\n", p_vectorNum);
-            //     if (m_versionMap.Deleted(p_vectorNum)) {
-            //         LOG(Helper::LogLevel::LL_Info, "Already Deleted\n");
-            //         return ErrorCode::ExternalAbort;
-            //     } else {
-            //         int i = 64;
-            //         while (p_id == -1 & i <= 4096) {
-            //             p_id = m_extraSearcher->SearchVector(vectorSet, m_index, i, p_vectorNum);
-            //             i *= 2;
-            //         }
-            //     }
-            //     exit(1);
-            // }
+
             return DeleteIndex(p_id);
         }
     }
