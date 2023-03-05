@@ -111,7 +111,7 @@ namespace SPTAG
                 for (auto file : *headfiles) {
                     files->push_back(m_options.m_headIndexFolder + FolderSep + file);
                 }
-                files->push_back(m_options.m_headIDFile);
+                if (m_options.m_excludehead) files->push_back(m_options.m_headIDFile);
                 return std::move(files);
             }
 

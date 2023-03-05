@@ -269,6 +269,7 @@ ErrorCode
 MemMetadataSet::Init(std::shared_ptr<Helper::DiskIO> p_metain, std::shared_ptr<Helper::DiskIO> p_metaindexin,
     std::uint64_t p_blockSize, std::uint64_t p_capacity, std::uint64_t p_metaSize)
 {
+    LOG(Helper::LogLevel::LL_Info, "Reading m_count\n");
     IOBINARY(p_metaindexin, ReadBinary, sizeof(m_count), (char*)&m_count);
     m_pOffsets.reset(new MetadataOffsets, std::default_delete<MetadataOffsets>());
     auto& m_offsets = *static_cast<MetadataOffsets*>(m_pOffsets.get());
