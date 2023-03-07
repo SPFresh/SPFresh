@@ -811,6 +811,8 @@ namespace SPTAG {
                 int insertThreads, 
                 std::shared_ptr<SPTAG::VectorSet> vectorSet, 
                 std::vector<SizeType>& insertSet,
+                std::vector<SizeType>& metaIndice,
+                int curCount,
                 int updateSize,
                 SPANN::Options& p_opts)
             {
@@ -832,8 +834,23 @@ namespace SPTAG {
                             {
                                 LOG(Helper::LogLevel::LL_Info, "Insert: Sent %.2lf%%...\n", index * 100.0 / updateSize);
                             }
+                            std::vector<char> meta;
+                            std::vector<std::uint64_t> metaoffset;
+                            std::string a = std::to_string(curCount + index);
+                            metaoffset.push_back((std::uint64_t)meta.size());
+                            for (size_t j = 0; j < a.length(); j++)
+                                meta.push_back(a[j]);
+                            metaoffset.push_back((std::uint64_t)meta.size());
+                            std::shared_ptr<SPTAG::MetadataSet> metaset(new SPTAG::MemMetadataSet(
+                                SPTAG::ByteArray((std::uint8_t*)meta.data(), meta.size() * sizeof(char), false),
+                                SPTAG::ByteArray((std::uint8_t*)metaoffset.data(), metaoffset.size() * sizeof(std::uint64_t), false),
+                                1));
                             auto insertBegin = std::chrono::high_resolution_clock::now();
-                            p_index->AddIndex(vectorSet->GetVector(insertSet[index]), 1, p_opts.m_dim, nullptr);
+                            p_index->AddIndex(vectorSet->GetVector(insertSet[index]), 1, p_opts.m_dim, metaset);
+                            metaIndice[insertSet[index]] = (curCount + index);
+                            // if (insertSet[index] == 0) {
+                            //     LOG(Helper::LogLevel::LL_Info, "batch: insert 0 to meta: %d\n", metaIndice[insertSet[index]]);
+                            // }
                             auto insertEnd = std::chrono::high_resolution_clock::now();
                             latency_vector[index] = std::chrono::duration_cast<std::chrono::microseconds>(insertEnd - insertBegin).count();
                         }
@@ -879,6 +896,7 @@ namespace SPTAG {
                 int deleteThreads, 
                 std::shared_ptr<SPTAG::VectorSet> vectorSet,
                 std::vector<SizeType>& deleteSet,
+                std::vector<SizeType>& metaIndice,
                 int updateSize,
                 SPANN::Options& p_opts,
                 int batch)
@@ -900,7 +918,22 @@ namespace SPTAG {
                                 LOG(Helper::LogLevel::LL_Info, "Delete: Sent %.2lf%%...\n", index * 100.0 / updateSize);
                             }
                             auto deleteBegin = std::chrono::high_resolution_clock::now();
-                            p_index->DeleteIndex(vectorSet->GetVector(deleteSet[index]), deleteSet[index]);
+                            // p_index->DeleteIndex(vectorSet->GetVector(deleteSet[index]), deleteSet[index]);
+                            std::vector<char> meta;
+                            std::string a = std::to_string(metaIndice[deleteSet[index]]);
+                            for (size_t j = 0; j < a.length(); j++)
+                                meta.push_back(a[j]);
+                            ByteArray metarr = SPTAG::ByteArray((std::uint8_t*)meta.data(), meta.size() * sizeof(char), false);
+
+                            // if (deleteSet[index] == 0) {
+                            //     LOG(Helper::LogLevel::LL_Info, "batch: delete 0, meta: %d\n", metaIndice[deleteSet[index]]);
+                            // }
+
+                            if (p_index->VectorIndex::DeleteIndex(metarr) == ErrorCode::VectorNotFound) {
+                                LOG(Helper::LogLevel::LL_Info,"VID meta no found: %d, meta: %d\n", deleteSet[index], metaIndice[deleteSet[index]]);
+                                exit(1);
+                            }
+
                             auto deleteEnd = std::chrono::high_resolution_clock::now();
                             latency_vector[index] = std::chrono::duration_cast<std::chrono::microseconds>(deleteEnd - deleteBegin).count();
                         }
@@ -913,19 +946,19 @@ namespace SPTAG {
                 for (int j = 0; j < deleteThreads; j++) { threads.emplace_back(func); }
                 for (auto& thread : threads) { thread.join(); }
 
-                double sendingCost = sw.getElapsedSec();
-                LOG(Helper::LogLevel::LL_Info,
-                "Delete: Finish sending in %.3lf seconds, sending throughput is %.2lf , deletion count %u.\n",
-                sendingCost,
-                updateSize / sendingCost,
-                static_cast<uint32_t>(updateSize));
-                LOG(Helper::LogLevel::LL_Info, "Delete Latency Distribution:\n");
-                PrintPercentiles<double, double>(latency_vector,
-                    [](const double& ss) -> double
-                    {
-                        return ss;
-                    },
-                    "%.3lf");
+                // double sendingCost = sw.getElapsedSec();
+                // LOG(Helper::LogLevel::LL_Info,
+                // "Delete: Finish sending in %.3lf seconds, sending throughput is %.2lf , deletion count %u.\n",
+                // sendingCost,
+                // updateSize / sendingCost,
+                // static_cast<uint32_t>(updateSize));
+                // LOG(Helper::LogLevel::LL_Info, "Delete Latency Distribution:\n");
+                // PrintPercentiles<double, double>(latency_vector,
+                //     [](const double& ss) -> double
+                //     {
+                //         return ss;
+                //     },
+                //     "%.3lf");
             }
             
             template <typename ValueType>
@@ -982,6 +1015,12 @@ namespace SPTAG {
                 int updateSize;
                 std::vector<SizeType> insertSet;
                 std::vector<SizeType> deleteSet;
+                std::vector<SizeType> metaIndice;
+                metaIndice.resize(vectorSet->Count());
+                for (int i = 0; i < curCount; i++) {
+                    metaIndice[i] = i;
+                }
+                
                 for (int i = 0; i < days; i++)
                 {   
 
@@ -992,13 +1031,13 @@ namespace SPTAG {
 
                     std::future<void> delete_future =
                         std::async(std::launch::async, DeleteVectorsBySet<ValueType>, p_index,
-                                insertThreads, vectorSet, std::ref(deleteSet), updateSize, std::ref(p_opts), i);
+                                1, vectorSet, std::ref(deleteSet), std::ref(metaIndice), updateSize, std::ref(p_opts), i);
 
                     std::future_status delete_status;
 
                     std::future<void> insert_future =
                         std::async(std::launch::async, InsertVectorsBySet<ValueType>, p_index,
-                                insertThreads, vectorSet, std::ref(insertSet), updateSize, std::ref(p_opts));
+                                insertThreads, vectorSet, std::ref(insertSet), std::ref(metaIndice), curCount, updateSize, std::ref(p_opts));
 
                     std::future_status insert_status;
 
@@ -1015,6 +1054,8 @@ namespace SPTAG {
                             p_index->GetDBStat();
                         }
                     } while (insert_status != std::future_status::ready || delete_status != std::future_status::ready);
+
+                    curCount += updateSize;
 
                     p_index->GetIndexStat(updateSize, true, true);
 
@@ -1096,7 +1137,7 @@ namespace SPTAG {
                 const char* configurationPath) {
 
                 std::shared_ptr<VectorIndex> index;
-                std::string iniPath = "/home/yuming/ssdfile/store_sift10m_ratio1p0";
+                std::string iniPath = "/home/yuming/ssdfile/store_sift100m_ratio1p0";
 
                 if (index->LoadIndex(iniPath, index) != ErrorCode::Success) {
                     LOG(Helper::LogLevel::LL_Error, "Failed to load index.\n");
