@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#include "inc/Test.h"
-
 #include "inc/Core/Common.h"
 #include "inc/Core/Common/TruthSet.h"
 #include "inc/Core/SPANN/Index.h"
@@ -897,14 +895,18 @@ namespace SPTAG {
                 SPANN::Options& p_opts,
                 int batch)
             {
+                int avgQPS = p_opts.m_deleteQPS / deleteThreads;
+                if (p_opts.m_deleteQPS == -1) avgQPS = -1;
                 std::vector<double> latency_vector(updateSize);
                 std::vector<std::thread> threads;
                 StopWSPFresh sw;
                 std::atomic_size_t vectorsSent(0);
                 auto func = [&]()
                 {
+                    int deleteCount = 0;
                     while (true)
                     {
+                        deleteCount++;
                         size_t index = 0;
                         index = vectorsSent.fetch_add(1);
                         if (index < updateSize)
@@ -928,6 +930,10 @@ namespace SPTAG {
 
                             auto deleteEnd = std::chrono::high_resolution_clock::now();
                             latency_vector[index] = std::chrono::duration_cast<std::chrono::microseconds>(deleteEnd - deleteBegin).count();
+                            if (avgQPS != -1 && deleteCount == avgQPS) {
+                                std::this_thread::sleep_for(std::chrono::seconds(1));
+                                deleteCount = 0;
+                            }
                         }
                         else
                         {
@@ -937,6 +943,12 @@ namespace SPTAG {
                 };
                 for (int j = 0; j < deleteThreads; j++) { threads.emplace_back(func); }
                 for (auto& thread : threads) { thread.join(); }
+                double sendingCost = sw.getElapsedSec();
+                LOG(Helper::LogLevel::LL_Info,
+                "Delete: Finish sending in %.3lf seconds, sending throughput is %.2lf , deletion count %u.\n",
+                sendingCost,
+                updateSize / sendingCost,
+                static_cast<uint32_t>(updateSize));
             }
             
             template <typename ValueType>
@@ -1049,104 +1061,39 @@ namespace SPTAG {
                     {
                         StableSearch(p_index, numThreads, querySet, vectorSet, searchTimes, p_opts.m_queryCountLimit, internalResultNum, truthFileName, p_opts, sw.getElapsedSec());
                     }
-                    p_index->ForceCompaction();
+                    // p_index->ForceCompaction();
                 }
             }
 
-            template <typename ValueType>
-            void SearchSPFresh(SPANN::Index<ValueType>* p_index)
-            {
-                SPANN::Options& p_opts = *(p_index->GetOptions());
-
-                if (p_opts.m_update) 
-                {
-                    // UpdateSPFresh(p_index);
-                    SteadyStateSPFresh(p_index);
-                    return;
-                }
-
-                std::string outputFile = p_opts.m_searchResult;
-                std::string truthFile = p_opts.m_truthPath;
-                std::string warmupFile = p_opts.m_warmupPath;
-
-                if (!p_opts.m_logFile.empty())
-                {
-                    g_pLogger.reset(new Helper::FileLogger(Helper::LogLevel::LL_Info, p_opts.m_logFile.c_str()));
-                }
-                int numThreads = p_opts.m_searchThreadNum;
-                int internalResultNum = p_opts.m_searchInternalResultNum;
-                int searchTimes = p_opts.m_searchTimes;
-
-                LOG(Helper::LogLevel::LL_Info, "Start loading QuerySet...\n");
-                std::shared_ptr<Helper::ReaderOptions> queryOptions(new Helper::ReaderOptions(p_opts.m_valueType, p_opts.m_dim, p_opts.m_queryType, p_opts.m_queryDelimiter));
-                auto queryReader = Helper::VectorSetReader::CreateInstance(queryOptions);
-                if (ErrorCode::Success != queryReader->LoadFile(p_opts.m_queryPath))
-                {
-                    LOG(Helper::LogLevel::LL_Error, "Failed to read query file.\n");
-                    exit(1);
-                }
-                auto querySet = queryReader->GetVectorSet();
-
-                p_index->ForceCompaction();
-
-                std::shared_ptr<VectorSet> vectorSet;
-
-                LOG(Helper::LogLevel::LL_Info, "Start loading VectorSet...\n");
-                if (!p_opts.m_vectorPath.empty() && fileexists(p_opts.m_vectorPath.c_str())) {
-                    std::shared_ptr<Helper::ReaderOptions> vectorOptions(new Helper::ReaderOptions(p_opts.m_valueType, p_opts.m_dim, p_opts.m_vectorType, p_opts.m_vectorDelimiter));
-                    auto vectorReader = Helper::VectorSetReader::CreateInstance(vectorOptions);
-                    if (ErrorCode::Success == vectorReader->LoadFile(p_opts.m_vectorPath))
-                    {
-                        vectorSet = vectorReader->GetVectorSet();
-                        if (p_opts.m_distCalcMethod == DistCalcMethod::Cosine) vectorSet->Normalize(numThreads);
-                        LOG(Helper::LogLevel::LL_Info, "\nLoad VectorSet(%d,%d).\n", vectorSet->Count(), vectorSet->Dimension());
-                    }
-                }
-
-                StableSearch(p_index, numThreads, querySet, vectorSet, searchTimes, p_opts.m_queryCountLimit, internalResultNum, p_opts.m_truthPath, p_opts);
-            }
-
-            int UpdateTest(std::map<std::string, std::map<std::string, std::string>>* config_map, 
-                const char* configurationPath) {
+            int UpdateTest(const char* storePath) {
 
                 std::shared_ptr<VectorIndex> index;
-                std::string iniPath = "/home/yuming/ssdfile/store_sift100m_ratio1p0";
 
-                if (index->LoadIndex(iniPath, index) != ErrorCode::Success) {
+                if (index->LoadIndex(storePath, index) != ErrorCode::Success) {
                     LOG(Helper::LogLevel::LL_Error, "Failed to load index.\n");
-                    exit(1);
+                    return 1;
                 }
 
                 SPANN::Options* opts = nullptr;
 
             #define DefineVectorValueType(Name, Type) \
-            if (index->GetVectorValueType() == VectorValueType::Name) { \
-            opts = ((SPANN::Index<Type>*)index.get())->GetOptions(); \
-            } \
+                if (index->GetVectorValueType() == VectorValueType::Name) { \
+                    opts = ((SPANN::Index<Type>*)index.get())->GetOptions(); \
+                } \
 
             #include "inc/Core/DefinitionList.h"
             #undef DefineVectorValueType
-                        
-#define DefineVectorValueType(Name, Type) \
-	if (opts->m_valueType == VectorValueType::Name) { \
-        SearchSPFresh((SPANN::Index<Type>*)(index.get())); \
-	} \
 
-#include "inc/Core/DefinitionList.h"
-#undef DefineVectorValueType
+            #define DefineVectorValueType(Name, Type) \
+                if (opts->m_valueType == VectorValueType::Name) { \
+                    SteadyStateSPFresh((SPANN::Index<Type>*)(index.get())); \
+                } \
+
+            #include "inc/Core/DefinitionList.h"
+            #undef DefineVectorValueType
+
                 return 0;
             }
         }
     }
 }
-
-BOOST_AUTO_TEST_SUITE(SPFreshTest)
-
-BOOST_AUTO_TEST_CASE(SPFreshUpdate)
-{
-    std::map<std::string, std::map<std::string, std::string>> my_map;
-    std::string configPath = "test.ini";
-	SSDServing::SPFresh::UpdateTest(&my_map, configPath.data());
-}
-
-BOOST_AUTO_TEST_SUITE_END()

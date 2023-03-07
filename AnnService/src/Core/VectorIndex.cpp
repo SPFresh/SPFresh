@@ -217,7 +217,7 @@ VectorIndex::UpdateMetaMapping(const std::string& meta, SizeType i)
 {
     MetadataMap* ptr = static_cast<MetadataMap*>(m_pMetaToVec.get());
     auto iter = ptr->find(meta);
-    if (iter != ptr->end()) DeleteIndex(iter->second);;
+    if (iter != ptr->end()) DeleteIndex(iter->second);
     (*ptr)[meta] = i;
 }
 
