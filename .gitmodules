@@ -1,3 +1,6 @@
 [submodule "ThirdParty/zstd"]
 	path = ThirdParty/zstd
 	url = https://github.com/facebook/zstd
+[submodule "ThirdParty/spdk"]
+	path = ThirdParty/spdk
+	url = https://github.com/spdk/spdk
