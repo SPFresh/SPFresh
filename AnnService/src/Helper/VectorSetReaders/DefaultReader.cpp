@@ -53,7 +53,6 @@ DefaultVectorReader::GetVectorSet(SizeType start, SizeType end) const
         LOG(Helper::LogLevel::LL_Error, "Failed to read VectorSet!\n");
         throw std::runtime_error("Failed read file");
     }
-    
     if (start > row) start = row;
     if (end < 0 || end > row) end = row;
     std::uint64_t totalRecordVectorBytes = ((std::uint64_t)GetValueTypeSize(m_options->m_inputValueType)) * (end - start) * col;
