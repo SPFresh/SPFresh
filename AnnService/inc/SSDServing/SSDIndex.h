@@ -116,7 +116,9 @@ namespace SPTAG {
 
                 for (int i = 0; i < p_numThreads; i++) { threads.emplace_back([&, i]()
                     {
-                        Helper::SetThreadAffinity(i, threads[i], 1, 0);
+                        // Helper::SetThreadAffinity( ((i+1) * 4), threads[i], 0, 0);
+
+                        p_index->Initialize();
 
                         Utils::StopW threadws;
                         size_t index = 0;
@@ -176,7 +178,7 @@ namespace SPTAG {
                 {
                     g_pLogger.reset(new Helper::FileLogger(Helper::LogLevel::LL_Info, p_opts.m_logFile.c_str()));
                 }
-                int numThreads = p_opts.m_iSSDNumberOfThreads;
+                int numThreads = p_opts.m_searchThreadNum;
                 int internalResultNum = p_opts.m_searchInternalResultNum;
                 int K = p_opts.m_resultNum;
                 int truthK = (p_opts.m_truthResultNum <= 0) ? K : p_opts.m_truthResultNum;
@@ -297,6 +299,22 @@ namespace SPTAG {
                     [](const SPANN::SearchStats& ss) -> double
                     {
                         return ss.m_totalSearchLatency - ss.m_exLatency;
+                    },
+                    "%.3lf");
+
+                LOG(Helper::LogLevel::LL_Info, "\nComp Latency Distribution:\n");
+                PrintPercentiles<double, SPANN::SearchStats>(stats,
+                    [](const SPANN::SearchStats& ss) -> double
+                    {
+                        return ss.m_compLatency;
+                    },
+                    "%.3lf");
+
+                LOG(Helper::LogLevel::LL_Info, "\nSPDK Latency Distribution:\n");
+                PrintPercentiles<double, SPANN::SearchStats>(stats,
+                    [](const SPANN::SearchStats& ss) -> double
+                    {
+                        return ss.m_diskReadLatency;
                     },
                     "%.3lf");
 

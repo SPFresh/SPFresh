@@ -97,7 +97,9 @@ namespace SPTAG {
             int m_samples;
             bool m_excludehead;
             bool m_useKV;
+            bool m_useSPDK;
             std::string m_KVPath;
+            std::string m_spdkMappingPath;
             std::string m_ssdInfoFile;
             bool m_useDirectIO;
             bool m_preReassign;
