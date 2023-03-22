@@ -408,7 +408,7 @@ namespace SPTAG
                 if (args.counts[i] > 0) availableClusters++;
             }
             CountStd = sqrt(CountStd / args._DK) / CountAvg;
-            if (debug) LOG(Helper::LogLevel::LL_Info, "Lambda:min(%g,%g) Max:%d Min:%d Avg:%f Std/Avg:%f Dist:%f NonZero/Total:%d/%d\n", originalLambda, adjustedLambda, maxCount, minCount, CountAvg, CountStd, currDist, availableClusters, args._DK);
+            // if (debug) LOG(Helper::LogLevel::LL_Info, "Lambda:min(%g,%g) Max:%d Min:%d Avg:%f Std/Avg:%f Dist:%f NonZero/Total:%d/%d\n", originalLambda, adjustedLambda, maxCount, minCount, CountAvg, CountStd, currDist, availableClusters, args._DK);
 
             return CountStd;
         }
@@ -569,7 +569,7 @@ break;
 
                     m_pTreeStart.push_back((SizeType)m_pTreeRoots.size());
                     m_pTreeRoots.emplace_back((SizeType)localindices.size());
-                    LOG(Helper::LogLevel::LL_Info, "Start to build BKTree %d\n", i + 1);
+                    // LOG(Helper::LogLevel::LL_Info, "Start to build BKTree %d\n", i + 1);
 
                     ss.push(BKTStackItem(m_pTreeStart[i], 0, (SizeType)localindices.size(), true));
                     while (!ss.empty()) {
@@ -617,7 +617,7 @@ break;
                         m_pTreeRoots[item.index].childEnd = (SizeType)m_pTreeRoots.size();
                     }
                     m_pTreeRoots.emplace_back(-1);
-                    LOG(Helper::LogLevel::LL_Info, "%d BKTree built, %zu %zu\n", i + 1, m_pTreeRoots.size() - m_pTreeStart[i], localindices.size());
+                    // LOG(Helper::LogLevel::LL_Info, "%d BKTree built, %zu %zu\n", i + 1, m_pTreeRoots.size() - m_pTreeStart[i], localindices.size());
                 }
             }
 
