@@ -172,6 +172,7 @@ namespace SPTAG {
             int m_mergeThreshold;
             bool m_loadAllVectors;
             bool m_steadyState;
+            int m_spdkBatchSize;
 
 
             Options() {
