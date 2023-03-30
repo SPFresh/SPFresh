@@ -173,6 +173,7 @@ namespace SPTAG {
             bool m_loadAllVectors;
             bool m_steadyState;
             int m_spdkBatchSize;
+            bool m_stressTest;
 
 
             Options() {
