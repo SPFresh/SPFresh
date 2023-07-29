@@ -1,7 +1,7 @@
-cp /home/sosp/store_spacev100m/indexloader_iopslimit.ini /home/sosp/store_spacev100m/indexloader.ini 
+cp /home/sosp/data/store_spacev100m/indexloader_iopslimit.ini /home/sosp/data/store_spacev100m/indexloader.ini 
 SearchThreadNumLine="107c SearchThreadNum="
-loaderPath="/home/sosp/store_spacev100m/indexloader.ini "
-storePath="/home/sosp/store_spacev100m"
+loaderPath="/home/sosp/data/store_spacev100m/indexloader.ini "
+storePath="/home/sosp/data/store_spacev100m"
 logPath="log_searchthread"
 
 for i in 1 2 8 10 12

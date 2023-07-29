@@ -87,6 +87,7 @@ lsblk
 ```bash
 sudo nvme format /dev/nvme0n1
 sudo ./SPFresh/ThirdParty/spdk/scripts/setup.sh
+cp bdev.json /home/sosp/SPFresh/
 ```
 
 ### **DiskANN**

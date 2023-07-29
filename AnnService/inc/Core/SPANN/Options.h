@@ -174,6 +174,7 @@ namespace SPTAG {
             bool m_steadyState;
             int m_spdkBatchSize;
             bool m_stressTest;
+            int m_bufferLength;
 
 
             Options() {

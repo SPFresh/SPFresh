@@ -1,4 +1,4 @@
-cp /home/sosp/store_spacev100m/indexloader_spfresh.ini /home/sosp/store_spacev100m/indexloader.ini 
+cp /home/sosp/store_spacev100m/data/indexloader_spfresh.ini /home/sosp/data/store_spacev100m/indexloader.ini 
 PCI_ALLOWED="c636:00:00.0" SPFRESH_SPDK_USE_SSD_IMPL=1 SPFRESH_SPDK_CONF=/home/sosp/SPFresh/bdev.json SPFRESH_SPDK_BDEV=Nvme0n1 sudo -E /home/sosp/SPFresh/Release/spfresh /home/sosp/data/store_spacev100m/|tee log_overall_performance_spacev_spfresh.log
 python process_spfresh.py log_overall_performance_spacev_spfresh.log overall_performance_spacev_spfresh_result.csv
 
