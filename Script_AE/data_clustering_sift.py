@@ -103,7 +103,7 @@ if __name__ == "__main__":
             f.write(dim_bin)
             f.write(vec_list[i])
 
-    with open(args.dist + str(clusters), "wb") as f:
+    with open(args.dst + str(clusters), "wb") as f:
         f.write(struct.pack('i', row))
         f.write(dim_bin)
         for i in range(0, clusers):

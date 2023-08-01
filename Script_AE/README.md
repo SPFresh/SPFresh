@@ -54,6 +54,7 @@ This will takes 1 days to generate SPANN Index of SPACEV100M with a 160 threads 
 
 ```bash
 /home/sosp/SPFresh/Release/ssdserving build_SPANN_spacev100m.ini
+mv iniFile/store_spacev100m/*.ini /home/sosp/data/store_spacev100m
 ```
 
 > To generate DiskANN Index for Overall Performance
@@ -71,9 +72,10 @@ This will takes 5 days to generate SPANN Index of SPACEV100M with a 160 threads 
 
 ```bash
 /home/sosp/SPFresh/Release/ssdserving build_SPANN_sift1b.ini
+mv iniFile/store_sift1b/indexloader_stress.ini /home/sosp/data/store_sift_cluster/indexloader.ini
 ```
 
-> To generate data for figure 9,10
+> To generate data for figure 1,9,10
 ```bash
 # using sift
 python generate_dataset.py --src /home/sosp/data/sift_data/base.1B.u8bin --dst /home/sosp/data/sift_data/bigann2m_base.u8bin --topk 2000000
@@ -88,7 +90,9 @@ mv /home/sosp/data/sift_data/bigann2m_update_clustering_origin_truth0 /home/sosp
 
 #build index
 /home/sosp/SPFresh/Release/ssdserving build_clustering_1m.ini
+mv iniFile/store_sift_cluster/*.ini /home/sosp/data/store_sift_cluster/
 /home/sosp/SPFresh/Release/ssdserving build_clustering_2m.ini
+mv iniFile/store_sift_cluster_2m/indexloader_clustering_2m.ini /home/sosp/data/store_sift_cluster/indexloader.ini
 
 ```
 
@@ -97,6 +101,7 @@ mv /home/sosp/data/sift_data/bigann2m_update_clustering_origin_truth0 /home/sosp
 python generate_dataset.py --src /home/sosp/data/sift_data/base.1B.u8bin --dst /home/sosp/data/sift_data/bigann1m_base.u8bin --topk 1000000
 # build index
 /home/sosp/SPFresh/Release/ssdserving build_sift1m.ini
+mv iniFile/store_sift1m/indexloader_sift1m.ini /home/sosp/data/store_sift1m/indexloader.ini
 ```
 
 ## **Additional Setup**
