@@ -19,7 +19,7 @@ set datafile separator ","
 set encoding utf8
 set autoscale
 set grid ls 20
-set key box ls 20 opaque fc rgb "#3fffffff" width 0.5
+# set key box ls 20 opaque fc rgb "#3fffffff" width 0.5
 set tics scale 0.5
 set xtics nomirror out autofreq offset 0,0.5,0 format ""
 set ytics nomirror out autofreq offset 0.5,0,0
@@ -68,7 +68,7 @@ set xtics format '%g'
 set ytics out format '%gk'
 set ytics ("400k" 400, "500k" 500)
 set title "IOPS" offset 0, -0.7
-set key box ls 20 opaque fc rgb "#3fffffff" width 0.5
+# set key box ls 20 opaque fc rgb "#3fffffff" width 0.5
 set key at graph 0.99, 0.35 reverse Left
 set origin 0, 0
 set size 1, 0.4
