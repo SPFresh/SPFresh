@@ -28,9 +28,9 @@ wget https://comp21storage.blob.core.windows.net/publiccontainer/comp21/spacev1b
 > To generate dataset for Overall Performance
 ```bash
 # generate dataset for index build
-python generate_dataset.py --src source_file_path --dst output_file_path --topk 10000000
+python generate_dataset.py --src source_file_path --dst output_file_path --topk 100000000
 # generate dataset for update
-python generate_dataset.py --src source_file_path --dst output_file_path --topk 20000000
+python generate_dataset.py --src source_file_path --dst output_file_path --topk 200000000
 ```
 > To generate trace for Overall Performance & generate truth for Overall Performance
 
@@ -73,6 +73,32 @@ This will takes 5 days to generate SPANN Index of SPACEV100M with a 160 threads 
 /home/sosp/SPFresh/Release/ssdserving build_SPANN_sift1b.ini
 ```
 
+> To generate data for figure 9,10
+```bash
+# using sift
+python generate_dataset.py --src /home/sosp/data/sift_data/base.1B.u8bin --dst /home/sosp/data/sift_data/bigann2m_base.u8bin --topk 2000000
+# this command require numpy and sklearn
+python data_clustering_sift.py --src /home/sosp/data/sift_data/bigann2m_base.u8bin --dst /home/sosp/data/sift_data/bigann1m_update_clustering
+mv /home/sosp/data/sift_data/bigann1m_update_clustering0 /home/sosp/data/sift_data/bigann1m_update_clustering
+mv /home/sosp/data/sift_data/bigann1m_update_clustering1 /home/sosp/data/sift_data/bigann1m_update_clustering_trace0
+mv /home/sosp/data/sift_data/bigann1m_update_clustering2 /home/sosp/data/sift_data/bigann2m_update_clustering
+#generate truth
+/home/sosp/SPFresh/Release/ssdserving genTruth_clustering.ini
+mv /home/sosp/data/sift_data/bigann2m_update_clustering_origin_truth0 /home/sosp/data/sift_data/bigann2m_update_clustering_origin_truth
+
+#build index
+/home/sosp/SPFresh/Release/ssdserving build_clustering_1m.ini
+/home/sosp/SPFresh/Release/ssdserving build_clustering_2m.ini
+
+```
+
+> To generate data for figure 11
+```bash
+python generate_dataset.py --src /home/sosp/data/sift_data/base.1B.u8bin --dst /home/sosp/data/sift_data/bigann1m_base.u8bin --topk 1000000
+# build index
+/home/sosp/SPFresh/Release/ssdserving build_sift1m.ini
+```
+
 ## **Additional Setup**
 here is additional setup for evaluation
 
@@ -104,6 +130,8 @@ sudo chmod 777 /home/sosp/testbed
 ```
 
 ## **Start to Run**
+
+> all files for running is already set in those folders in Azure VM for AE.
 
 ### **Motivation (Figure 1)**
 > It takes about 22 minutes
