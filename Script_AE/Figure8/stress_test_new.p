@@ -60,13 +60,13 @@ plot "stress_test.csv" using 1:5 every ::3 with lines title 'Search Throughput' 
 
 # Start the third plot
 
-set yrange [300:530]
+set yrange [300:600]
 set xlabel "Batches/Days" offset 0,1,0
 # set ylabel 'IOPS' offset 1.5,0,0
 set label 1 "IOPS" at screen 0.05, graph 0.63 center rotate by 90
 set xtics format '%g'
 set ytics out format '%gk'
-set ytics ("400k" 400, "500k" 500)
+set ytics ("400k" 400, "600k" 600)
 set title "IOPS" offset 0, -0.7
 # set key box ls 20 opaque fc rgb "#3fffffff" width 0.5
 set key at graph 0.99, 0.35 reverse Left

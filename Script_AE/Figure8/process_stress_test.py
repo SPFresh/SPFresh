@@ -40,7 +40,7 @@ while True:
 
                 batch_len = len(avg_latency_batch)
                 duration = int(batch_len) / number_point_per_batch
-                
+                # print(batch_len)
                 for i in range(0, number_point_per_batch):
                     avg_latency.append(float(avg_latency_batch[0+i*duration]))
                     tail_latency.append(float(tail_latency_batch[0+i*duration]))
@@ -52,7 +52,8 @@ while True:
                 tail_latency_batch = []
                 throughput_batch = []
                 RSS_batch = []
-            else:
+            
+            if this_process != 0:
                 done = False
                 while not done:
                     line = log_f.readline()
@@ -142,16 +143,17 @@ while True:
         print('Error when processing [at line]: {}: {}'.format(line_count , line))
         break
 
+if this_process != 0:
+    batch_len = len(avg_latency_batch)
+    duration = int(batch_len) / number_point_per_batch
+    print(batch_len)
 
-batch_len = len(avg_latency_batch)
-duration = int(batch_len) / number_point_per_batch
-
-for i in range(0, number_point_per_batch):
-    avg_latency.append(float(avg_latency_batch[0+i*duration]))
-    tail_latency.append(float(tail_latency_batch[0+i*duration]))
-    throughput.append(float(throughput_batch[0+i*duration]))
-    RSS.append(RSS_batch[0+i*duration])
-    KIOPS.append(KIOPS_batch[0+i*duration])
+    for i in range(0, number_point_per_batch):
+        avg_latency.append(float(avg_latency_batch[0+i*duration]))
+        tail_latency.append(float(tail_latency_batch[0+i*duration]))
+        throughput.append(float(throughput_batch[0+i*duration]))
+        RSS.append(RSS_batch[0+i*duration])
+        KIOPS.append(KIOPS_batch[0+i*duration])
 
 step = 0.25
 batch = []
@@ -236,7 +238,7 @@ temp_search_new.append('')
 for i in range(0, 20):
     temp_search_new.append('')
 
-print(len(insert_avg_latency_new))
+# print(KIOPS_search)
 
 with open('stress_test2.csv', 'w') as f:
     writer = csv.writer(f, delimiter=',')
