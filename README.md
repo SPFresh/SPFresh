@@ -13,7 +13,7 @@ Since we use SPDK to build our storage, we need to disabled Secure boot option b
 
 > Clone the repository and submodules
 ```bash
-git clone git@github.com:MaggieQi/SPFresh.git
+git clone git@github.com:SPFresh/SPFresh.git
 git submodule update --init --recursive
 ```
 
@@ -58,7 +58,7 @@ make -j
 > Build RocksDB
 ```bash
 mkdir build && cd build
-cmake -DUSE_RTTI=1 -DWITH_JEMALLOC=1 -DWITH_SNAPPY=1 -DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-fPIC" ..
+cmake -DUSE_RTTI=1 -DWITH_JEMALLOC=1 -DWITH_SNAPPY=1 -DCMAKE_C_COMPILER=gcc-9 -DCMAKE_CXX_COMPILER=g++9 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-fPIC" ..
 make -j
 sudo make install
 ```
@@ -107,7 +107,7 @@ mkdir build && cd build && cmake .. && make -j
 
 > if liomp5 can not be found, the following command could be useful
 ```bash
-sudo ln -s /opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin/libiomp5.so /opt/intel/oneapi/mkl/2022.0.2/lib/intel64/libiomp5.so
+sudo ln -s /opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin/libiomp5.so /usr/lib/x86_64-linux-gnu/libiomp5.so
 ```
 
 ## **Reproduce All Experiment Results(Result Reproduced)**
