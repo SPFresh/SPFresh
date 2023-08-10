@@ -3,6 +3,7 @@ storePath="/home/sosp/data/store_sift_cluster"
 ReassignLine="118c ReassignK="
 logPath="log_top"
 
+cp /home/sosp/data/store_sift_cluster/indexloader_top64.ini /home/sosp/data/store_sift_cluster/indexloader.ini
 
 for i in 0 8 64 128
 do

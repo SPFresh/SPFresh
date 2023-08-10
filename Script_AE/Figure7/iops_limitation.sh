@@ -4,7 +4,7 @@ loaderPath="/home/sosp/data/store_spacev100m/indexloader.ini "
 storePath="/home/sosp/data/store_spacev100m"
 logPath="log_searchthread"
 
-for i in 1 2 8 10 12
+for i in 1 2 4 8 10 12
 do
     newSearchThreadNumLine=$SearchThreadNumLine$i
     sed -i "$newSearchThreadNumLine" $loaderPath
