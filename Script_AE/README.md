@@ -14,8 +14,14 @@ here is additional setup for evaluation
 
 ### **How to check current state**
 > if we can not see the /dev/nvme0n1 after the following command, it means this disk has been taken over by SPDK
+> Using SPDK will bind the disk to SPDK and the /dev/nvme0n1 will not be shown after "lsblk"
 ```bash
 lsblk
+```
+
+> If the device has been binded to SPDK, the following command can reset
+```bash
+sudo ./SPFresh/ThirdParty/spdk/scripts/setup.sh reset
 ```
 
 ### **SPFresh & SPANN+**
@@ -27,7 +33,7 @@ cp bdev.json /home/sosp/SPFresh/
 ```
 
 ### **DiskANN**
-> If the device has been binded to SPDK, the following command can reset
+> DiskANN Baseline use the filesystem provided by kernel to maintain its on-disk file, so if we want to run DiskANN, we need to release the disk from SPDK
 ```bash
 sudo ./SPFresh/ThirdParty/spdk/scripts/setup.sh reset
 ```
@@ -37,6 +43,13 @@ sudo ./SPFresh/ThirdParty/spdk/scripts/setup.sh reset
 sudo mkfs.ext4 /dev/nvme0n1
 sudo mount /dev/nvme0n1 /home/sosp/testbed
 sudo chmod 777 /home/sosp/testbed
+```
+
+> If you want to switch Evaluation from DiskANN to SPFresh, you must umount the filesystem at first and follow the above SPDK command
+```bash
+sudo umount /home/sosp/testbed
+sudo nvme format /dev/nvme0n1
+sudo ./SPFresh/ThirdParty/spdk/scripts/setup.sh
 ```
 
 ## **Start to Run**
