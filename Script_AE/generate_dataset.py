@@ -14,16 +14,21 @@ if __name__ == "__main__":
     args = process_args()
 
     # Read topk vector one by one
-    #change from xvec to default
     vecs = ""
+    row_bin = "";
+    dim_bin = ""; 
     with open(args.src, "rb") as f:
+
+        row_bin = f.read(4)
+        assert row_bin != b''
+        row, = struct.unpack('i', row_bin)
+
+        dim_bin = f.read(4)
+        assert dim_bin != b''
+        dim, = struct.unpack('i', dim_bin)
 
         i = 0
         while 1:
-
-            dim_bin = f.read(4)
-            assert dim_bin != b''
-            dim, = struct.unpack('i', dim_bin)
 
             # The next 4 * dim byte is for a vector
             vec = f.read(dim)
