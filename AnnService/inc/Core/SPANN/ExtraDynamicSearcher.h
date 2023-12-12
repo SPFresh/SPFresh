@@ -839,6 +839,7 @@ namespace SPTAG::SPANN {
 
         inline void MergeAsync(VectorIndex* p_index, SizeType headID, std::function<void()> p_callback = nullptr)
         {
+            if (!m_opt->m_update) return;
             tbb::concurrent_hash_map<SizeType, SizeType>::const_accessor headIDAccessor;
             if (m_mergeList.find(headIDAccessor, headID)) {
                 return;
@@ -1147,7 +1148,6 @@ namespace SPTAG::SPANN {
             }
 
             readLatency += ((double)std::chrono::duration_cast<std::chrono::microseconds>(readEnd - readStart).count());
-
             for (uint32_t pi = 0; pi < postingLists.size(); ++pi) {
                 auto curPostingID = p_exWorkSpace->m_postingIDs[pi];
                 std::string& postingList = postingLists[pi];
