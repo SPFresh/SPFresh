@@ -9,6 +9,21 @@
 #include <unordered_set>
 #include <chrono>
 
+BOOST_AUTO_TEST_CASE(UnbuiltIndexesCanBeDestroyed)
+{
+    auto bkt = SPTAG::VectorIndex::CreateInstance(
+        SPTAG::IndexAlgoType::BKT,
+        SPTAG::VectorValueType::Float);
+    BOOST_REQUIRE(bkt != nullptr);
+    bkt.reset();
+
+    auto kdt = SPTAG::VectorIndex::CreateInstance(
+        SPTAG::IndexAlgoType::KDT,
+        SPTAG::VectorValueType::Float);
+    BOOST_REQUIRE(kdt != nullptr);
+    kdt.reset();
+}
+
 template <typename T>
 void Build(SPTAG::IndexAlgoType algo, std::string distCalcMethod, std::shared_ptr<SPTAG::VectorSet>& vec, std::shared_ptr<SPTAG::MetadataSet>& meta, const std::string out)
 {
