@@ -2,11 +2,19 @@
 // Licensed under the MIT License.
 
 #include "inc/Test.h"
+#include "inc/Core/Common.h"
+#include "inc/Core/Common/Dataset.h"
 #include "inc/Helper/CommonHelper.h"
 
 #include <memory>
 
 BOOST_AUTO_TEST_SUITE(CommonHelperTest)
+
+
+BOOST_AUTO_TEST_CASE(DefaultDatasetCanBeDestroyed)
+{
+    SPTAG::COMMON::Dataset<float> dataset;
+}
 
 
 BOOST_AUTO_TEST_CASE(ToLowerInPlaceTest)

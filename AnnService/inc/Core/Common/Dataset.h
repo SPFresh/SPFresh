@@ -230,7 +230,7 @@ namespace SPTAG
             DimensionType mycols = 0;
 
         public:
-            Dataset() {}
+            Dataset() : incBlocks(std::make_shared<std::vector<char*>>()) {}
 
             Dataset(SizeType rows_, DimensionType cols_, SizeType rowsInBlock_, SizeType capacity_, const void* data_ = nullptr, bool shareOwnership_ = true, std::shared_ptr<std::vector<char*>> incBlocks_ = nullptr, int colStart_ = 0, int rowEnd_ = -1)
             {
